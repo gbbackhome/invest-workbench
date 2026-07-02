@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Invest Workbench — ASURADA</title>
+<style>
+  :root{
+    --bg:#0e1420;--card:#161d2c;--card2:#1c2537;--line:#26304a;
+    --ink:#e8edf6;--sub:#8b96ad;--blue:#3182f6;
+    --up:#f04452;--down:#3485fa;--gold:#c98a00;--green:#0a8f5b;
+  }
+  *{box-sizing:border-box;font-family:'Pretendard',system-ui,-apple-system,'Apple SD Gothic Neo',sans-serif}
+  body{margin:0;background:var(--bg);color:var(--ink);line-height:1.5}
+  header{background:linear-gradient(120deg,#101a30,#152449);padding:18px 26px;border-bottom:1px solid var(--line)}
+  header h1{margin:0;font-size:19px} header p{margin:4px 0 0;color:var(--sub);font-size:12px}
+  .wrap{max-width:1240px;margin:0 auto;padding:18px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
+  .card h2{font-size:15px;margin:0 0 10px}
+  .row{display:flex;gap:14px;flex-wrap:wrap} .row>*{flex:1;min-width:300px}
+  .muted{color:var(--sub);font-size:12px}
+  .pill{font-size:10px;padding:2px 8px;border-radius:20px;background:#1d2c4d;color:#7fb0ff;margin-left:6px}
+  input,select,textarea{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;background:var(--card2);color:var(--ink)}
+  input:focus,textarea:focus{outline:1px solid var(--blue)}
+  button{background:var(--blue);color:#fff;border:0;border-radius:8px;padding:9px 16px;font-size:13px;cursor:pointer}
+  button.ghost{background:var(--card2);border:1px solid var(--line);color:var(--ink)}
+  button.sell{background:var(--down)} button.buy{background:var(--up)}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th,td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left}
+  th{color:var(--sub);font-weight:600;font-size:11px}
+  .num{text-align:right;font-variant-numeric:tabular-nums}
+  .up{color:var(--up)} .down{color:var(--down)}
+  .tabbar{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+  .tabbar button{background:var(--card2);border:1px solid var(--line);color:var(--sub);padding:7px 14px}
+  .tabbar button.on{background:var(--blue);border-color:var(--blue);color:#fff}
+  .stat{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}
+  .stat div{background:var(--card2);border-radius:10px;padding:10px 14px;min-width:110px}
+  .stat b{font-size:19px;display:block} .stat span{font-size:11px;color:var(--sub)}
+  .banner{background:#2b2413;border:1px solid #5c4a12;color:#ffd66b;border-radius:10px;padding:10px 14px;font-size:12px;margin-bottom:14px}
+  .note{border-left:3px solid var(--blue);background:var(--card2);padding:10px 14px;border-radius:0 10px 10px 0;font-size:12px;color:var(--sub);margin-top:10px}
+  .tv{border-radius:10px;overflow:hidden;background:var(--card2)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:900px){.grid2{grid-template-columns:1fr}}
+  .qcard{background:var(--card2);border-radius:10px;padding:12px 14px;margin-top:10px;display:none}
+  .qcard b{font-size:22px}
+  .tag{display:inline-block;font-size:10px;padding:1px 7px;border-radius:20px;background:#1d2c4d;color:#7fb0ff;margin:1px 3px 1px 0}
+  dialog{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:14px;max-width:440px;width:92%}
+  dialog::backdrop{background:rgba(0,0,0,.6)}
+  .field{margin-bottom:10px} .field label{display:block;font-size:12px;color:var(--sub);margin-bottom:4px}
+  .field input,.field textarea,.field select{width:100%}
+</style>
+</head>
+<body>
+<header>
+  <h1>📊 Invest Workbench <span class="pill">DEMO · 학습용</span></h1>
+  <p>미국시장 실시간 대시보드 + 데모 트레이딩 + 매매일지 · powered by ASURADA 🏎️ · 실제 돈이 오가지 않는 가상 계좌입니다</p>
+</header>
+
+<div class="wrap">
+
+  <div id="keyBanner" class="banner" style="display:none">
+    🔑 데모 매매·시세 조회에는 무료 Finnhub API 키가 필요해요 —
+    <a href="https://finnhub.io/register" target="_blank" style="color:#ffd66b">finnhub.io/register</a>에서 발급 후
+    아래 ⑦ 설정에 붙여넣기 (차트·캘린더 등 위젯은 키 없이도 동작)
+  </div>
+
+  <!-- ① 티커 테이프 -->
+  <div class="tv" id="tape" style="margin-bottom:16px"></div>
+
+  <!-- ② 시장 개요 + 실시간 차트 -->
+  <div class="row">
+    <div class="card" style="flex:1.4;min-width:340px">
+      <h2>① 실시간 차트 <span class="pill">TradingView</span></h2>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <input id="chartSym" value="NASDAQ:AAPL" style="flex:1" placeholder="예: NASDAQ:TSLA, AMEX:SPY, NYSE:WHLR">
+        <button onclick="loadChart()">차트 변경</button>
+      </div>
+      <div class="tv" id="chart" style="height:480px"></div>
+    </div>
+    <div class="card" style="flex:1;min-width:300px">
+      <h2>② 시장 개요</h2>
+      <div class="tv" id="overview" style="height:540px"></div>
+    </div>
+  </div>
+
+  <!-- ③ 지금 뜨는 종목 + 히트맵 -->
+  <div class="grid2">
+    <div class="card">
+      <h2>③ 지금 뜨는 종목 <span class="pill">급등 · 급락 · 거래량</span></h2>
+      <div class="tv" id="movers" style="height:500px"></div>
+    </div>
+    <div class="card">
+      <h2>④ S&amp;P 500 섹터 히트맵 <span class="pill">지금 뜨는 사업</span></h2>
+      <div class="tv" id="heatmap" style="height:500px"></div>
+    </div>
+  </div>
+
+  <!-- ⑤ 경제 캘린더 -->
+  <div class="card">
+    <h2>⑤ 주요 일정 <span class="pill">경제지표 캘린더 · investing.com 스타일</span></h2>
+    <div class="tv" id="calendar" style="height:520px"></div>
+  </div>
+
+  <!-- ⑥ 기관·내부자 동향 -->
+  <div class="card">
+    <h2>⑥ 기관·내부자 매매 동향 <span class="pill">SEC Form 4</span></h2>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <input id="insiderSym" value="AAPL" placeholder="티커 (예: NVDA)">
+      <button onclick="loadInsiders()">조회</button>
+    </div>
+    <div id="insiderOut" class="muted">티커 입력 후 조회 (Finnhub 키 필요)</div>
+    <div class="note">
+      ℹ️ 미국 시장은 한국(KRX)처럼 <b>외국인·기관 일별 순매수 데이터를 공개하지 않아요.</b>
+      가장 가까운 공개 데이터가 ① 내부자 매매(SEC Form 4, 위 표 — 준실시간)와
+      ② 기관 보유 지분(13F — 분기 1회 공시)입니다. "기관이 지금 사고 있나"의 프록시로 참고하세요.
+    </div>
+  </div>
+
+  <!-- ⑦ 데모 트레이딩 -->
+  <div class="card">
+    <h2>⑦ 데모 트레이딩 <span class="pill">가상 $10,000 · Plus500 스타일</span></h2>
+    <div class="stat" id="acctStat"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <input id="tradeSym" placeholder="티커 (예: AAPL)" style="width:140px">
+      <button class="ghost" onclick="fetchQuote()">시세 조회</button>
+      <button class="buy" onclick="openOrder('buy')">매수</button>
+      <button class="sell" onclick="openOrder('sell')">매도</button>
+      <span style="flex:1"></span>
+      <button class="ghost" onclick="exportCSV()">일지 CSV 내보내기</button>
+      <button class="ghost" onclick="resetAccount()" style="color:var(--up)">계좌 초기화</button>
+    </div>
+    <div class="qcard" id="quoteCard"></div>
+
+    <h2 style="margin-top:18px">보유 포지션 <button class="ghost" style="padding:4px 10px;font-size:11px" onclick="refreshPositions()">↻ 평가 갱신</button></h2>
+    <table id="posTable"><tr><th>티커</th><th class="num">수량</th><th class="num">평단</th><th class="num">현재가</th><th class="num">평가액</th><th class="num">평가손익</th></tr></table>
+    <div class="muted" id="posEmpty">보유 포지션 없음</div>
+
+    <h2 style="margin-top:18px">매매일지 <span class="pill">진입 근거는 필수 · 복기 클릭해 작성</span></h2>
+    <table id="jTable"><tr><th>일시</th><th>티커</th><th>구분</th><th class="num">수량</th><th class="num">체결가</th><th class="num">실현손익</th><th>진입/청산 근거</th><th>셋업</th><th>복기</th></tr></table>
+    <div class="muted" id="jEmpty">아직 기록이 없어요. 첫 매매를 해보세요.</div>
+  </div>
+
+  <!-- 설정 -->
+  <div class="card">
+    <h2>⑧ 설정</h2>
+    <div class="field" style="max-width:480px">
+      <label>Finnhub API 키 (무료 — 브라우저 localStorage에만 저장, 외부 전송 없음)</label>
+      <div style="display:flex;gap:8px"><input id="apiKey" type="password" style="flex:1"><button onclick="saveKey()">저장</button></div>
+    </div>
+    <div class="note">
+      ⚠️ <b>학습 노트</b>: 미국 주식엔 상·하한가(±30%)가 없어요 (한국 제도). 대신 서킷브레이커(LULD)만 존재.
+      급등주 추격보다 ① 진입 근거를 문장으로 쓸 수 있는가 ② 손절선을 미리 정했는가 — 이 두 가지를 일지로 훈련하는 게 이 툴의 목적입니다.
+      데모 수익은 실전 심리(공포·욕심)가 빠진 결과라는 것도 늘 기억하세요.
+    </div>
+  </div>
+
+  <p class="muted">본 도구는 교육용 시뮬레이터로 투자 권유가 아닙니다 · 시세 데이터: TradingView 위젯, Finnhub (무료 티어, 일부 지연 가능)</p>
+</div>
+
+<!-- 주문 다이얼로그 -->
+<dialog id="orderDlg">
+  <form method="dialog" style="padding:20px" onsubmit="return submitOrder(event)">
+    <h2 id="odTitle" style="margin:0 0 14px;font-size:16px"></h2>
+    <div class="field"><label>티커</label><input id="odSym" readonly></div>
+    <div class="field"><label>체결가 (USD) — 시세 조회값 자동 입력, 수동 수정 가능</label><input id="odPrice" type="number" step="0.01" min="0.01" required></div>
+    <div class="field"><label>수량</label><input id="odQty" type="number" step="1" min="1" required></div>
+    <div class="field"><label>진입/청산 근거 (필수, 10자 이상) — "왜"를 문장으로</label>
+      <textarea id="odWhy" rows="3" required placeholder="예: NFP 발표 후 반도체 낙폭 과대 판단, 전저점 지지 확인. 손절선 $XX."></textarea></div>
+    <div class="field"><label>셋업 태그</label>
+      <select id="odTag"><option>추세추종</option><option>낙폭과대 반등</option><option>돌파</option><option>지지선 매수</option><option>실적/이벤트</option><option>장기투자</option><option>기타</option></select></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button type="button" class="ghost" onclick="orderDlg.close()">취소</button>
+      <button id="odGo" type="submit">주문 실행</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+/* ---------- TradingView 위젯 ---------- */
+function mountTV(id, widget, cfg){
+  const c=document.getElementById(id); c.innerHTML='';
+  const w=document.createElement('div'); w.className='tradingview-widget-container';
+  const inner=document.createElement('div'); inner.className='tradingview-widget-container__widget';
+  w.appendChild(inner);
+  const s=document.createElement('script');
+  s.src='https://s3.tradingview.com/external-embedding/embed-widget-'+widget+'.js';
+  s.async=true; s.innerHTML=JSON.stringify(cfg);
+  w.appendChild(s); c.appendChild(w);
+}
+mountTV('tape','ticker-tape',{symbols:[
+  {proName:'FOREXCOM:NSXUSD',title:'나스닥 100'},{proName:'FOREXCOM:SPXUSD',title:'S&P 500'},
+  {proName:'FOREXCOM:DJI',title:'다우존스'},{proName:'TVC:VIX',title:'VIX'},
+  {proName:'TVC:DXY',title:'달러 인덱스'},{proName:'BITSTAMP:BTCUSD',title:'비트코인'},
+  {proName:'TVC:GOLD',title:'금'},{proName:'KRX:KOSPI',title:'코스피'}],
+  showSymbolLogos:true,colorTheme:'dark',isTransparent:true,displayMode:'adaptive',locale:'kr'});
+function loadChart(){
+  mountTV('chart','advanced-chart',{autosize:true,symbol:document.getElementById('chartSym').value.trim()||'NASDAQ:AAPL',
+    interval:'5',timezone:'Asia/Seoul',theme:'dark',style:'1',locale:'kr',
+    allow_symbol_change:true,hide_side_toolbar:false,support_host:'https://www.tradingview.com'});
+}
+loadChart();
+mountTV('overview','market-overview',{colorTheme:'dark',dateRange:'1D',showChart:true,locale:'kr',
+  width:'100%',height:'540',isTransparent:true,showSymbolLogos:true,
+  tabs:[
+    {title:'지수',symbols:[{s:'FOREXCOM:SPXUSD',d:'S&P 500'},{s:'FOREXCOM:NSXUSD',d:'나스닥 100'},{s:'FOREXCOM:DJI',d:'다우존스'},{s:'TVC:VIX',d:'VIX'},{s:'KRX:KOSPI',d:'코스피'}]},
+    {title:'환율·원자재',symbols:[{s:'TVC:DXY',d:'달러 인덱스'},{s:'FX_IDC:USDKRW',d:'달러/원'},{s:'TVC:GOLD',d:'금'},{s:'TVC:USOIL',d:'WTI 유가'}]},
+    {title:'크립토',symbols:[{s:'BITSTAMP:BTCUSD',d:'비트코인'},{s:'BITSTAMP:ETHUSD',d:'이더리움'}]}
+  ]});
+mountTV('movers','hotlists',{colorTheme:'dark',dateRange:'1D',exchange:'US',showChart:true,
+  locale:'kr',width:'100%',height:'500',isTransparent:true,showSymbolLogos:true});
+mountTV('heatmap','stock-heatmap',{dataSource:'SPX500',grouping:'sector',blockSize:'market_cap_basic',
+  blockColor:'change',locale:'kr',colorTheme:'dark',hasTopBar:false,isZoomEnabled:true,
+  hasSymbolTooltip:true,width:'100%',height:'500'});
+mountTV('calendar','events',{colorTheme:'dark',isTransparent:true,width:'100%',height:'520',
+  locale:'kr',importanceFilter:'0,1',countryFilter:'us,eu,cn,jp,kr'});
+
+/* ---------- 상태 ---------- */
+const LS='invest-workbench-v1';
+let S=JSON.parse(localStorage.getItem(LS)||'null')||{cash:10000,positions:{},trades:[],key:''};
+const save=()=>localStorage.setItem(LS,JSON.stringify(S));
+const fmt=n=>n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const cls=n=>n>0?'up':n<0?'down':'';
+const sign=n=>(n>0?'+':'')+fmt(n);
+
+document.getElementById('apiKey').value=S.key||'';
+if(!S.key)document.getElementById('keyBanner').style.display='block';
+function saveKey(){S.key=document.getElementById('apiKey').value.trim();save();
+  document.getElementById('keyBanner').style.display=S.key?'none':'block';alert('저장 완료');}
+
+/* ---------- Finnhub ---------- */
+async function fh(path){
+  if(!S.key)throw new Error('API 키가 없어요 — ⑧ 설정에서 Finnhub 키를 저장하세요.');
+  const r=await fetch('https://finnhub.io/api/v1'+path+(path.includes('?')?'&':'?')+'token='+S.key);
+  if(!r.ok)throw new Error('API 오류 ('+r.status+') — 키 확인 또는 호출제한(분당 60회) 대기');
+  return r.json();
+}
+let lastQuote=null;
+async function fetchQuote(){
+  const sym=document.getElementById('tradeSym').value.trim().toUpperCase();
+  if(!sym)return alert('티커를 입력하세요');
+  const el=document.getElementById('quoteCard');el.style.display='block';el.innerHTML='조회 중…';
+  try{
+    const q=await fh('/quote?symbol='+sym);
+    if(!q.c)throw new Error('시세 없음 — 티커 확인');
+    lastQuote={sym,price:q.c};
+    el.innerHTML=`<b>${sym} $${fmt(q.c)}</b>
+      <span class="${cls(q.d)}" style="margin-left:8px">${sign(q.d)} (${sign(q.dp)}%)</span>
+      <div class="muted">시가 $${fmt(q.o)} · 고가 $${fmt(q.h)} · 저가 $${fmt(q.l)} · 전일종가 $${fmt(q.pc)}</div>`;
+  }catch(e){el.innerHTML='<span class="up">'+e.message+'</span>';lastQuote=null;}
+}
+
+/* ---------- 주문 ---------- */
+const orderDlg=document.getElementById('orderDlg');
+let orderSide='buy';
+function openOrder(side){
+  const sym=document.getElementById('tradeSym').value.trim().toUpperCase();
+  if(!sym)return alert('티커를 먼저 입력하세요');
+  if(side==='sell'&&!(S.positions[sym]&&S.positions[sym].qty>0))return alert('보유하지 않은 종목이에요');
+  orderSide=side;
+  document.getElementById('odTitle').textContent=(side==='buy'?'🔴 매수':'🔵 매도')+' — '+sym;
+  document.getElementById('odSym').value=sym;
+  document.getElementById('odPrice').value=lastQuote&&lastQuote.sym===sym?lastQuote.price:'';
+  document.getElementById('odQty').value='';
+  document.getElementById('odWhy').value='';
+  document.getElementById('odGo').className=side;
+  orderDlg.showModal();
+}
+function submitOrder(ev){
+  ev.preventDefault();
+  const sym=document.getElementById('odSym').value;
+  const price=parseFloat(document.getElementById('odPrice').value);
+  const qty=parseInt(document.getElementById('odQty').value);
+  const why=document.getElementById('odWhy').value.trim();
+  const tag=document.getElementById('odTag').value;
+  if(!(price>0&&qty>0))return alert('가격/수량을 확인하세요');
+  if(why.length<10)return alert('진입/청산 근거를 10자 이상 적어주세요 — 이게 이 툴의 핵심이에요!');
+  const cost=price*qty;
+  let realized=null;
+  if(orderSide==='buy'){
+    if(cost>S.cash)return alert('현금 부족 (보유 $'+fmt(S.cash)+')');
+    const p=S.positions[sym]||{qty:0,avgCost:0};
+    p.avgCost=(p.avgCost*p.qty+cost)/(p.qty+qty);p.qty+=qty;
+    S.positions[sym]=p;S.cash-=cost;
+  }else{
+    const p=S.positions[sym];
+    if(!p||p.qty<qty)return alert('보유 수량 부족 ('+(p?p.qty:0)+'주)');
+    realized=(price-p.avgCost)*qty;
+    p.qty-=qty;if(p.qty===0)delete S.positions[sym];
+    S.cash+=cost;
+  }
+  S.trades.unshift({ts:new Date().toISOString(),sym,side:orderSide,qty,price,realized,why,tag,review:''});
+  save();orderDlg.close();renderAcct();renderJournal();refreshPositions();
+  return false;
+}
+
+/* ---------- 렌더 ---------- */
+let lastPrices={};
+function renderAcct(){
+  let posVal=0,unreal=0;
+  for(const sym in S.positions){const p=S.positions[sym];const cur=lastPrices[sym]||p.avgCost;
+    posVal+=cur*p.qty;unreal+=(cur-p.avgCost)*p.qty;}
+  const realized=S.trades.reduce((a,t)=>a+(t.realized||0),0);
+  const total=S.cash+posVal;
+  const closed=S.trades.filter(t=>t.realized!==null&&t.realized!==undefined);
+  const wins=closed.filter(t=>t.realized>0).length;
+  document.getElementById('acctStat').innerHTML=`
+    <div><b>$${fmt(total)}</b><span>총 자산</span></div>
+    <div><b>$${fmt(S.cash)}</b><span>현금</span></div>
+    <div><b class="${cls(unreal)}">${sign(unreal)}</b><span>평가손익</span></div>
+    <div><b class="${cls(realized)}">${sign(realized)}</b><span>실현손익 누적</span></div>
+    <div><b>${closed.length?Math.round(wins/closed.length*100)+'%':'—'}</b><span>승률 (청산 ${closed.length}건)</span></div>`;
+}
+async function refreshPositions(){
+  const syms=Object.keys(S.positions);
+  const tb=document.getElementById('posTable');
+  document.getElementById('posEmpty').style.display=syms.length?'none':'block';
+  tb.querySelectorAll('tr:not(:first-child)').forEach(r=>r.remove());
+  for(const sym of syms){
+    const p=S.positions[sym];
+    let cur=lastPrices[sym]||null;
+    if(S.key){try{const q=await fh('/quote?symbol='+sym);if(q.c){cur=q.c;lastPrices[sym]=q.c;}}catch(e){}}
+    const c=cur||p.avgCost, pnl=(c-p.avgCost)*p.qty, pct=(c/p.avgCost-1)*100;
+    tb.insertAdjacentHTML('beforeend',`<tr><td><b>${sym}</b></td><td class="num">${p.qty}</td>
+      <td class="num">$${fmt(p.avgCost)}</td><td class="num">${cur?'$'+fmt(c):'—'}</td>
+      <td class="num">$${fmt(c*p.qty)}</td>
+      <td class="num ${cls(pnl)}">${sign(pnl)} (${sign(pct)}%)</td></tr>`);
+  }
+  renderAcct();
+}
+function renderJournal(){
+  const tb=document.getElementById('jTable');
+  document.getElementById('jEmpty').style.display=S.trades.length?'none':'block';
+  tb.querySelectorAll('tr:not(:first-child)').forEach(r=>r.remove());
+  S.trades.forEach((t,i)=>{
+    const d=new Date(t.ts);
+    const dt=`${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    tb.insertAdjacentHTML('beforeend',`<tr>
+      <td class="muted">${dt}</td><td><b>${t.sym}</b></td>
+      <td class="${t.side==='buy'?'up':'down'}">${t.side==='buy'?'매수':'매도'}</td>
+      <td class="num">${t.qty}</td><td class="num">$${fmt(t.price)}</td>
+      <td class="num ${t.realized!=null?cls(t.realized):''}">${t.realized!=null?sign(t.realized):'—'}</td>
+      <td style="max-width:260px">${esc(t.why)}</td><td><span class="tag">${t.tag}</span></td>
+      <td style="cursor:pointer;color:${t.review?'var(--ink)':'var(--sub)'}" onclick="editReview(${i})">${t.review?esc(t.review):'✍️ 복기 쓰기'}</td></tr>`);
+  });
+}
+const esc=s=>(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function editReview(i){
+  const cur=S.trades[i].review||'';
+  const v=prompt('복기 — 이 매매에서 배운 것, 다음에 다르게 할 것:',cur);
+  if(v!==null){S.trades[i].review=v.trim();save();renderJournal();}
+}
+function exportCSV(){
+  const rows=[['datetime','symbol','side','qty','price','realized_pnl','rationale','setup','review']];
+  S.trades.slice().reverse().forEach(t=>rows.push([t.ts,t.sym,t.side,t.qty,t.price,t.realized??'',t.why,t.tag,t.review]));
+  const csv=rows.map(r=>r.map(c=>'"'+String(c??'').replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv'}));
+  a.download='trade-journal-'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+}
+function resetAccount(){
+  if(confirm('계좌를 초기화할까요? 포지션·일지가 모두 삭제됩니다.')){
+    S={cash:10000,positions:{},trades:[],key:S.key};save();lastPrices={};
+    renderAcct();renderJournal();refreshPositions();
+  }
+}
+
+/* ---------- 내부자 매매 ---------- */
+const CODE={P:'장내매수',S:'장내매도',A:'수여(보상)',M:'옵션행사',G:'증여',F:'세금납부매도',D:'처분'};
+async function loadInsiders(){
+  const sym=document.getElementById('insiderSym').value.trim().toUpperCase();
+  const out=document.getElementById('insiderOut');
+  if(!sym)return;
+  out.innerHTML='조회 중…';
+  try{
+    const r=await fh('/stock/insider-transactions?symbol='+sym);
+    const rows=(r.data||[]).slice(0,20);
+    if(!rows.length){out.innerHTML='최근 내부자 매매 기록 없음';return;}
+    out.innerHTML='<table><tr><th>일자</th><th>이름</th><th>유형</th><th class="num">주식수 변화</th><th class="num">단가</th></tr>'+
+      rows.map(d=>{const buy=(d.change||0)>0;
+        return `<tr><td class="muted">${d.transactionDate||''}</td><td>${esc(d.name)}</td>
+        <td class="${buy?'up':'down'}">${CODE[d.transactionCode]||d.transactionCode||''}</td>
+        <td class="num ${buy?'up':'down'}">${(d.change||0).toLocaleString()}</td>
+        <td class="num">${d.transactionPrice?'$'+fmt(d.transactionPrice):'—'}</td></tr>`;}).join('')+'</table>';
+  }catch(e){out.innerHTML='<span class="up">'+e.message+'</span>';}
+}
+
+renderAcct();renderJournal();refreshPositions();
+</script>
+</body>
+</html>
