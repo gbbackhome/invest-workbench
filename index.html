@@ -72,6 +72,12 @@
   .field input,.field textarea,.field select{width:100%}
   .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 
+  /* 프로필 pill */
+  .pill{padding:6px 14px;border-radius:20px;background:var(--card2);border:1px solid var(--line);font-size:12px;cursor:pointer;color:var(--sub);font-weight:600}
+  .pill.on{background:var(--blue);border-color:var(--blue);color:#fff}
+  .pill.ghost{background:transparent;border-style:dashed}
+  .rank1{color:#ffd66b;font-weight:700}
+
   /* 학습 사이드노트 (아코디언) */
   details.edu{border:1px solid var(--line);border-radius:12px;background:var(--card2);margin:6px 0}
   details.edu>summary{padding:10px 13px;cursor:pointer;font-size:12.5px;font-weight:600;list-style:none;display:flex;align-items:center;gap:7px}
@@ -217,7 +223,8 @@
 
   <!-- 데모 트레이딩 -->
   <div class="card">
-    <h2>데모 트레이딩 <span class="sub">가상 $10,000 · Plus500 스타일</span></h2>
+    <h2>데모 트레이딩 <span class="sub">프로필별 가상 $10,000 · Plus500 스타일</span></h2>
+    <div class="toolbar" id="profileBar" style="margin-bottom:12px"></div>
     <div class="stat" id="acctStat"></div>
     <div class="toolbar">
       <input id="tradeSym" placeholder="티커 (예: NVDA)" style="width:150px">
@@ -237,6 +244,14 @@
     <h2 style="margin-top:20px">매매일지 <span class="sub">진입 근거 필수 · 복기 칸 클릭해 작성</span></h2>
     <table id="jTable"><tr><th>일시</th><th>티커</th><th>구분</th><th class="num">수량</th><th class="num">체결가</th><th class="num">실현손익</th><th>진입/청산 근거</th><th>셋업</th><th>복기</th></tr></table>
     <div class="muted" id="jEmpty">아직 기록이 없어요. 첫 매매를 해보세요.</div>
+
+    <h2 style="margin-top:20px">🏆 프로필 리더보드 <span class="sub">누가 제일 잘하나</span></h2>
+    <table id="lbTable"><tr><th>순위</th><th>프로필</th><th class="num">총 자산</th><th class="num">수익률</th><th class="num">승률</th><th class="num">청산</th></tr></table>
+    <div class="note">
+      ℹ️ 프로필은 이 브라우저(localStorage)에만 저장돼요 — 같은 컴퓨터에서 번갈아 쓰며 겨루는 방식.
+      다른 기기와는 공유되지 않고, Finnhub API 키는 프로필 공용입니다.
+      수익률은 시세를 조회한 종목 기준으로 계산돼요 (미조회 종목은 평단으로 계산).
+    </div>
   </div>
 
   <!-- 설정 -->
@@ -307,13 +322,54 @@ mountTV('heatmap','stock-heatmap',{dataSource:'SPX500',grouping:'sector',blockSi
 mountTV('calendar','events',{colorTheme:'dark',isTransparent:true,width:'100%',height:'520',
   locale:'kr',importanceFilter:'0,1',countryFilter:'us,eu,cn,jp,kr'});
 
-/* ---------- 상태 ---------- */
-const LS='invest-workbench-v1';
-let S=JSON.parse(localStorage.getItem(LS)||'null')||{cash:10000,positions:{},trades:[],key:''};
+/* ---------- 상태 (v2: 멀티 프로필) ---------- */
+const LS='invest-workbench-v2';
+const START_CASH=10000;
+const newProfile=name=>({name,cash:START_CASH,positions:{},trades:[]});
+let S=JSON.parse(localStorage.getItem(LS)||'null');
+if(!S){
+  // 구버전(v1, 단일 계좌) 데이터가 있으면 첫 프로필로 이전
+  const old=JSON.parse(localStorage.getItem('invest-workbench-v1')||'null');
+  S=old?{profiles:[{name:'프로필 1',cash:old.cash??START_CASH,positions:old.positions||{},trades:old.trades||[]}],active:0,key:old.key||''}
+       :{profiles:[newProfile('프로필 1')],active:0,key:''};
+}
+const P=()=>S.profiles[S.active];
 const save=()=>localStorage.setItem(LS,JSON.stringify(S));
+
+/* ---------- 프로필 관리 ---------- */
+function renderProfileBar(){
+  const bar=document.getElementById('profileBar');
+  bar.innerHTML=S.profiles.map((p,i)=>
+    `<button class="pill ${i===S.active?'on':''}" onclick="switchProfile(${i})">${esc(p.name)}</button>`).join('')+
+    `<button class="pill ghost" onclick="addProfile()">＋ 프로필 추가</button>`+
+    `<button class="pill ghost" onclick="renameProfile()">✏️ 이름 변경</button>`+
+    (S.profiles.length>1?`<button class="pill ghost" style="color:var(--up)" onclick="deleteProfile()">🗑 삭제</button>`:'');
+}
+function rerenderAll(){renderProfileBar();renderAcct();renderJournal();renderLeaderboard();refreshPositions();}
+function switchProfile(i){S.active=i;save();rerenderAll();}
+function addProfile(){
+  const name=(prompt('새 프로필 이름 (예: 경배, 동생, 엄마):')||'').trim();
+  if(!name)return;
+  if(S.profiles.some(p=>p.name===name))return alert('같은 이름의 프로필이 이미 있어요');
+  S.profiles.push(newProfile(name));S.active=S.profiles.length-1;save();rerenderAll();
+}
+function renameProfile(){
+  const name=(prompt('프로필 이름:',P().name)||'').trim();
+  if(!name)return;
+  P().name=name;save();renderProfileBar();renderLeaderboard();
+}
+function deleteProfile(){
+  if(S.profiles.length<=1)return alert('마지막 프로필은 삭제할 수 없어요');
+  if(!confirm(`"${P().name}" 프로필을 삭제할까요? 계좌·일지가 모두 사라집니다.`))return;
+  S.profiles.splice(S.active,1);S.active=0;save();rerenderAll();
+}
 const fmt=n=>n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 const cls=n=>n>0?'up':n<0?'down':'';
 const sign=n=>(n>0?'+':'')+fmt(n);
+// 헤더(첫 tr)만 남기고 데이터 행 전부 삭제.
+// 주의: insertAdjacentHTML로 넣은 tr은 별도 tbody에 들어가서
+// 'tr:not(:first-child)' 선택자로는 안 지워짐 (행 중복 버그의 원인)
+const clearRows=tb=>[...tb.querySelectorAll('tr')].slice(1).forEach(r=>r.remove());
 
 document.getElementById('apiKey').value=S.key||'';
 if(!S.key)document.getElementById('keyBanner').style.display='block';
@@ -348,7 +404,7 @@ let orderSide='buy';
 function openOrder(side){
   const sym=document.getElementById('tradeSym').value.trim().toUpperCase();
   if(!sym)return alert('티커를 먼저 입력하세요');
-  if(side==='sell'&&!(S.positions[sym]&&S.positions[sym].qty>0))return alert('보유하지 않은 종목이에요');
+  if(side==='sell'&&!(P().positions[sym]&&P().positions[sym].qty>0))return alert('보유하지 않은 종목이에요');
   orderSide=side;
   document.getElementById('odTitle').textContent=(side==='buy'?'🔴 매수':'🔵 매도')+' — '+sym;
   document.getElementById('odSym').value=sym;
@@ -368,20 +424,21 @@ function submitOrder(ev){
   if(!(price>0&&qty>0))return alert('가격/수량을 확인하세요');
   if(why.length<10)return alert('진입/청산 근거를 10자 이상 적어주세요 — 이게 이 툴의 핵심이에요!');
   const cost=price*qty;
+  const A=P();
   let realized=null;
   if(orderSide==='buy'){
-    if(cost>S.cash)return alert('현금 부족 (보유 $'+fmt(S.cash)+')');
-    const p=S.positions[sym]||{qty:0,avgCost:0};
+    if(cost>A.cash)return alert('현금 부족 (보유 $'+fmt(A.cash)+')');
+    const p=A.positions[sym]||{qty:0,avgCost:0};
     p.avgCost=(p.avgCost*p.qty+cost)/(p.qty+qty);p.qty+=qty;
-    S.positions[sym]=p;S.cash-=cost;
+    A.positions[sym]=p;A.cash-=cost;
   }else{
-    const p=S.positions[sym];
+    const p=A.positions[sym];
     if(!p||p.qty<qty)return alert('보유 수량 부족 ('+(p?p.qty:0)+'주)');
     realized=(price-p.avgCost)*qty;
-    p.qty-=qty;if(p.qty===0)delete S.positions[sym];
-    S.cash+=cost;
+    p.qty-=qty;if(p.qty===0)delete A.positions[sym];
+    A.cash+=cost;
   }
-  S.trades.unshift({ts:new Date().toISOString(),sym,side:orderSide,qty,price,realized,why,tag,review:''});
+  A.trades.unshift({ts:new Date().toISOString(),sym,side:orderSide,qty,price,realized,why,tag,review:''});
   save();orderDlg.close();renderAcct();renderJournal();refreshPositions();
   return false;
 }
@@ -389,42 +446,51 @@ function submitOrder(ev){
 /* ---------- 렌더 ---------- */
 let lastPrices={};
 function renderAcct(){
+  const A=P();
   let posVal=0,unreal=0;
-  for(const sym in S.positions){const p=S.positions[sym];const cur=lastPrices[sym]||p.avgCost;
+  for(const sym in A.positions){const p=A.positions[sym];const cur=lastPrices[sym]||p.avgCost;
     posVal+=cur*p.qty;unreal+=(cur-p.avgCost)*p.qty;}
-  const realized=S.trades.reduce((a,t)=>a+(t.realized||0),0);
-  const total=S.cash+posVal;
-  const closed=S.trades.filter(t=>t.realized!==null&&t.realized!==undefined);
+  const realized=A.trades.reduce((a,t)=>a+(t.realized||0),0);
+  const total=A.cash+posVal;
+  const closed=A.trades.filter(t=>t.realized!==null&&t.realized!==undefined);
   const wins=closed.filter(t=>t.realized>0).length;
   document.getElementById('acctStat').innerHTML=`
     <div><b>$${fmt(total)}</b><span>총 자산</span></div>
-    <div><b>$${fmt(S.cash)}</b><span>현금</span></div>
+    <div><b>$${fmt(A.cash)}</b><span>현금</span></div>
     <div><b class="${cls(unreal)}">${sign(unreal)}</b><span>평가손익</span></div>
     <div><b class="${cls(realized)}">${sign(realized)}</b><span>실현손익 누적</span></div>
     <div><b>${closed.length?Math.round(wins/closed.length*100)+'%':'—'}</b><span>승률 (청산 ${closed.length}건)</span></div>`;
 }
+let refreshRun=0; // 겹쳐 실행된 이전 갱신을 무효화하는 토큰 (중복 행 버그 방지)
 async function refreshPositions(){
-  const syms=Object.keys(S.positions);
-  const tb=document.getElementById('posTable');
-  document.getElementById('posEmpty').style.display=syms.length?'none':'block';
-  tb.querySelectorAll('tr:not(:first-child)').forEach(r=>r.remove());
+  const run=++refreshRun;
+  const A=P();
+  const syms=Object.keys(A.positions);
+  let html='';
   for(const sym of syms){
-    const p=S.positions[sym];
+    const p=A.positions[sym];
     let cur=lastPrices[sym]||null;
     if(S.key){try{const q=await fh('/quote?symbol='+sym);if(q.c){cur=q.c;lastPrices[sym]=q.c;}}catch(e){}}
+    if(run!==refreshRun)return; // 그 사이 새 갱신이 시작됨 — 이 실행은 버림
     const c=cur||p.avgCost, pnl=(c-p.avgCost)*p.qty, pct=(c/p.avgCost-1)*100;
-    tb.insertAdjacentHTML('beforeend',`<tr><td><b>${sym}</b></td><td class="num">${p.qty}</td>
+    html+=`<tr><td><b>${sym}</b></td><td class="num">${p.qty}</td>
       <td class="num">$${fmt(p.avgCost)}</td><td class="num">${cur?'$'+fmt(c):'—'}</td>
       <td class="num">$${fmt(c*p.qty)}</td>
-      <td class="num ${cls(pnl)}">${sign(pnl)} (${sign(pct)}%)</td></tr>`);
+      <td class="num ${cls(pnl)}">${sign(pnl)} (${sign(pct)}%)</td></tr>`;
   }
-  renderAcct();
+  if(run!==refreshRun)return;
+  const tb=document.getElementById('posTable');
+  document.getElementById('posEmpty').style.display=syms.length?'none':'block';
+  clearRows(tb);
+  tb.insertAdjacentHTML('beforeend',html);
+  renderAcct();renderLeaderboard();
 }
 function renderJournal(){
+  const A=P();
   const tb=document.getElementById('jTable');
-  document.getElementById('jEmpty').style.display=S.trades.length?'none':'block';
-  tb.querySelectorAll('tr:not(:first-child)').forEach(r=>r.remove());
-  S.trades.forEach((t,i)=>{
+  document.getElementById('jEmpty').style.display=A.trades.length?'none':'block';
+  clearRows(tb);
+  A.trades.forEach((t,i)=>{
     const d=new Date(t.ts);
     const dt=`${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
     tb.insertAdjacentHTML('beforeend',`<tr>
@@ -438,23 +504,47 @@ function renderJournal(){
 }
 const esc=s=>(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function editReview(i){
-  const cur=S.trades[i].review||'';
+  const cur=P().trades[i].review||'';
   const v=prompt('복기 — 이 매매에서 배운 것, 다음에 다르게 할 것:',cur);
-  if(v!==null){S.trades[i].review=v.trim();save();renderJournal();}
+  if(v!==null){P().trades[i].review=v.trim();save();renderJournal();}
 }
 function exportCSV(){
   const rows=[['datetime','symbol','side','qty','price','realized_pnl','rationale','setup','review']];
-  S.trades.slice().reverse().forEach(t=>rows.push([t.ts,t.sym,t.side,t.qty,t.price,t.realized??'',t.why,t.tag,t.review]));
+  P().trades.slice().reverse().forEach(t=>rows.push([t.ts,t.sym,t.side,t.qty,t.price,t.realized??'',t.why,t.tag,t.review]));
   const csv=rows.map(r=>r.map(c=>'"'+String(c??'').replace(/"/g,'""')+'"').join(',')).join('\n');
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv'}));
-  a.download='trade-journal-'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+  a.download='trade-journal-'+P().name.replace(/[^\w가-힣-]/g,'_')+'-'+new Date().toISOString().slice(0,10)+'.csv';a.click();
 }
 function resetAccount(){
-  if(confirm('계좌를 초기화할까요? 포지션·일지가 모두 삭제됩니다.')){
-    S={cash:10000,positions:{},trades:[],key:S.key};save();lastPrices={};
-    renderAcct();renderJournal();refreshPositions();
+  if(confirm(`"${P().name}" 프로필의 계좌를 초기화할까요? 포지션·일지가 모두 삭제됩니다.`)){
+    S.profiles[S.active]=newProfile(P().name);save();
+    rerenderAll();
   }
+}
+
+/* ---------- 리더보드 ---------- */
+function renderLeaderboard(){
+  const rows=S.profiles.map(p=>{
+    let posVal=0;
+    for(const sym in p.positions){const pos=p.positions[sym];posVal+=(lastPrices[sym]||pos.avgCost)*pos.qty;}
+    const total=p.cash+posVal;
+    const closed=p.trades.filter(t=>t.realized!==null&&t.realized!==undefined);
+    const wins=closed.filter(t=>t.realized>0).length;
+    return {name:p.name,total,ret:(total/START_CASH-1)*100,
+      win:closed.length?Math.round(wins/closed.length*100):null,n:closed.length};
+  }).sort((a,b)=>b.total-a.total);
+  const tb=document.getElementById('lbTable');
+  clearRows(tb);
+  rows.forEach((r,i)=>{
+    tb.insertAdjacentHTML('beforeend',`<tr>
+      <td class="${i===0?'rank1':''}">${i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)}</td>
+      <td><b>${esc(r.name)}</b>${r.name===P().name?' <span class="tag">현재</span>':''}</td>
+      <td class="num">$${fmt(r.total)}</td>
+      <td class="num ${cls(r.ret)}">${sign(r.ret)}%</td>
+      <td class="num">${r.win!==null?r.win+'%':'—'}</td>
+      <td class="num muted">${r.n}건</td></tr>`);
+  });
 }
 
 /* ---------- 내부자 매매 ---------- */
@@ -502,7 +592,7 @@ async function loadNews(){
   }catch(e){out.innerHTML='<span class="up">'+e.message+'</span>';}
 }
 
-renderAcct();renderJournal();refreshPositions();
+rerenderAll();
 </script>
 </body>
 </html>
