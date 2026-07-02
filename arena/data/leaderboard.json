@@ -79,6 +79,19 @@
    "virtual_pnl": 0,
    "open": 0,
    "total": 0
+  },
+  "asurada": {
+   "name": "아스라다 파트너봇",
+   "emoji": "🏎️",
+   "color": "#ff8a3d",
+   "style": "경배 맞춤 — 도쿄 거주 · SBI증권 · 목돈 모으는 단계",
+   "points": 0,
+   "graded": 0,
+   "hits": 0,
+   "hit_rate": null,
+   "virtual_pnl": 0,
+   "open": 0,
+   "total": 0
   }
  }
 }

@@ -47,7 +47,11 @@ def dump(path, obj):
 # ---------- 시세 (야후 파이낸스 차트 API — 무료, 키 불필요) ----------
 
 def yahoo_symbol(ticker):
-    return ticker.upper().replace(".", "-")  # BRK.B → BRK-B, ^GSPC는 그대로
+    t = ticker.upper()
+    # 거래소 접미사(.T 도쿄 등)는 유지, 주식 클래스 점(BRK.B)만 하이픈으로
+    if t.endswith((".T", ".KS", ".KQ")) or t.startswith("^"):
+        return t
+    return t.replace(".", "-")
 
 
 def fetch_closes(ticker, d1, d2):
