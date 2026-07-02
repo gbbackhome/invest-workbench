@@ -134,8 +134,17 @@
     <div>
       <!-- Trending Stocks (시안: 우측 리스트 + 스파크라인) -->
       <div class="card">
-        <h2>Trending Stocks <span class="sub">급등·급락·거래량</span></h2>
+        <h2>지금 뜨는 종목 <span class="sub">급등·급락·거래량</span></h2>
         <div class="tv" id="movers" style="height:460px"></div>
+        <div class="muted" style="font-size:10.5px;margin-top:4px">종목명이 영어로 나오면 아래 🇰🇷 한글 사전에서 검색해보세요 — 어떤 회사인지 한 줄로 알려드려요</div>
+
+        <details class="edu" style="margin-top:10px">
+          <summary>🇰🇷 미국주식 한글 사전 <span style="color:var(--sub);font-weight:400;font-size:11px">— 인기 티커, 검색 가능</span></summary>
+          <div class="body">
+            <input id="dictSearch" placeholder="티커나 한글명으로 검색 (예: 엔비디아, NVDA, 반도체)" style="width:100%;margin-bottom:8px" oninput="renderDict()">
+            <div id="dictOut" style="max-height:300px;overflow-y:auto"></div>
+          </div>
+        </details>
 
         <h2 style="margin-top:14px;font-size:13px">🔍 이 종목 왜 떠? <span class="sub">최근 7일 뉴스</span></h2>
         <div class="toolbar" style="margin-bottom:8px">
@@ -162,8 +171,15 @@
 
       <!-- Economic Calendar (시안: 타임라인 + Impact) -->
       <div class="card">
-        <h2>Economic Calendar <span class="sub">주요 일정</span></h2>
-        <div class="tv" id="calendar" style="height:420px"></div>
+        <h2>경제 캘린더 <span class="sub">주요 일정 · 한국시간</span></h2>
+        <div class="toolbar" style="margin-bottom:10px">
+          <button class="pill on" id="calKoBtn" onclick="setCal('ko')">🇰🇷 한국어</button>
+          <button class="pill" id="calEnBtn" onclick="setCal('en')">🇺🇸 영어 (TradingView)</button>
+        </div>
+        <div id="calKo"><iframe src="https://sslecal2.investing.com?columns=exc_flags,exc_currency,exc_importance,exc_actual,exc_forecast,exc_previous&features=datepicker,timezone&countries=5,72,37,35,11&calType=week&timeZone=88&lang=18"
+          style="width:100%;height:420px;border:0;border-radius:12px;background:#fff" loading="lazy" title="경제 캘린더 (한국어, 인베스팅닷컴)"></iframe>
+        <div class="muted" style="font-size:10.5px;margin-top:4px">한국어 캘린더: 인베스팅닷컴 제공 · 지표명이 전부 한국어 · 별(★) 3개 = 시장을 크게 움직이는 지표</div></div>
+        <div class="tv" id="calendar" style="height:420px;display:none"></div>
 
         <h2 style="margin-top:14px;font-size:13px">📖 이 지표들, 주식이랑 무슨 상관? <span class="sub">클릭해서 펼치기</span></h2>
         <div class="muted" style="font-size:11.5px;margin-bottom:8px">
@@ -254,6 +270,16 @@
     </div>
   </div>
 
+  <!-- 투자 개념 퀴즈 -->
+  <div class="card">
+    <h2>📚 투자 개념 퀴즈 <span class="sub">하루 몇 문제씩 — 프로필별 점수 기록</span></h2>
+    <div id="quizScore" class="muted" style="margin-bottom:10px"></div>
+    <div id="quizQ" style="font-size:14px;font-weight:600;margin-bottom:12px"></div>
+    <div id="quizChoices" style="display:flex;flex-direction:column;gap:8px;max-width:640px"></div>
+    <div id="quizExp" class="note" style="display:none"></div>
+    <div style="margin-top:12px"><button class="primary" id="quizNext" onclick="nextQuiz()" style="display:none">다음 문제 →</button></div>
+  </div>
+
   <!-- 설정 -->
   <div class="card">
     <h2>설정</h2>
@@ -319,8 +345,92 @@ mountTV('movers','hotlists',{colorTheme:'dark',dateRange:'1D',exchange:'US',show
 mountTV('heatmap','stock-heatmap',{dataSource:'SPX500',grouping:'sector',blockSize:'market_cap_basic',
   blockColor:'change',locale:'kr',colorTheme:'dark',hasTopBar:false,isZoomEnabled:true,
   hasSymbolTooltip:true,width:'100%',height:'440'});
-mountTV('calendar','events',{colorTheme:'dark',isTransparent:true,width:'100%',height:'520',
-  locale:'kr',importanceFilter:'0,1',countryFilter:'us,eu,cn,jp,kr'});
+// 경제 캘린더: 기본은 한국어(인베스팅닷컴 iframe), 영어(TradingView)는 토글 시 lazy 마운트
+let calEnMounted=false;
+function setCal(mode){
+  document.getElementById('calKo').style.display=mode==='ko'?'block':'none';
+  document.getElementById('calendar').style.display=mode==='en'?'block':'none';
+  document.getElementById('calKoBtn').className='pill'+(mode==='ko'?' on':'');
+  document.getElementById('calEnBtn').className='pill'+(mode==='en'?' on':'');
+  if(mode==='en'&&!calEnMounted){calEnMounted=true;
+    mountTV('calendar','events',{colorTheme:'dark',isTransparent:true,width:'100%',height:'420',
+      locale:'kr',importanceFilter:'0,1',countryFilter:'us,eu,cn,jp,kr'});}
+}
+
+/* ---------- 미국주식 한글 사전 ---------- */
+const TICKER_KO={
+  NVDA:['엔비디아','AI 반도체(GPU) 압도적 1위 — AI 붐의 최대 수혜주'],
+  TSLA:['테슬라','전기차·자율주행·로봇 — 머스크의 회사, 변동성 큼'],
+  AAPL:['애플','아이폰·맥 — 세계 최대 시가총액 단골'],
+  MSFT:['마이크로소프트','윈도우·오피스·클라우드(Azure)·오픈AI 투자'],
+  GOOGL:['알파벳(구글)','검색·유튜브·클라우드·AI(제미나이)'],
+  AMZN:['아마존','전자상거래 1위 + 클라우드(AWS) 1위'],
+  META:['메타','페이스북·인스타그램 — 광고가 주 수익'],
+  AVGO:['브로드컴','통신·AI 반도체 설계 대기업'],
+  AMD:['AMD','CPU·GPU — 엔비디아·인텔의 경쟁자'],
+  INTC:['인텔','전통 CPU 강자 — 파운드리 재건 중, 부침 큼'],
+  MU:['마이크론','메모리 반도체 — 삼성전자·하이닉스와 경쟁'],
+  TSM:['TSMC','대만 파운드리(위탁생산) 1위 — 애플·엔비디아 칩 생산'],
+  ASML:['ASML','네덜란드 노광장비 독점 — 반도체 장비의 슈퍼을'],
+  QCOM:['퀄컴','스마트폰 통신칩(스냅드래곤)'],
+  ARM:['암홀딩스','반도체 설계도(IP) 회사 — 소프트뱅크 소유'],
+  SMCI:['슈퍼마이크로','AI 서버 조립 — 급등락이 매우 심함'],
+  PLTR:['팔란티어','정부·기업용 빅데이터/AI 분석'],
+  COIN:['코인베이스','미국 최대 코인 거래소 — 비트코인 따라 움직임'],
+  MSTR:['(마이크로)스트래티지','비트코인을 대량 보유한 회사 — 사실상 BTC 레버리지'],
+  HOOD:['로빈후드','미국판 무료 주식앱 — 개미 거래 활발할수록 수혜'],
+  NFLX:['넷플릭스','스트리밍 1위'],
+  DIS:['디즈니','콘텐츠·테마파크·디즈니+'],
+  UBER:['우버','차량호출·배달 플랫폼'],
+  ABNB:['에어비앤비','숙박 공유 플랫폼'],
+  SBUX:['스타벅스','커피 체인 — 소비 경기 바로미터'],
+  NKE:['나이키','스포츠웨어 1위'],
+  MCD:['맥도날드','패스트푸드 — 경기방어주 성격'],
+  KO:['코카콜라','배당 꾸준한 대표 경기방어주 — 버핏 보유'],
+  PEP:['펩시코','음료+스낵(펩시·레이즈)'],
+  JNJ:['존슨앤드존슨','제약·의료기기 — 대표 배당주'],
+  LLY:['일라이릴리','비만치료제(젭바운드)로 급성장한 제약사'],
+  NVO:['노보노디스크','덴마크 제약 — 위고비(비만치료제)'],
+  PFE:['화이자','코로나 백신으로 유명한 대형 제약'],
+  UNH:['유나이티드헬스','미국 최대 건강보험'],
+  JPM:['JP모건','미국 최대 은행'],
+  BAC:['뱅크오브아메리카','미국 2위 은행 — 버핏 보유로 유명했음'],
+  GS:['골드만삭스','대표 투자은행(IB)'],
+  V:['비자','카드 결제망 — 소비가 늘면 수혜'],
+  MA:['마스터카드','비자와 양강 결제망'],
+  PYPL:['페이팔','온라인 결제'],
+  'BRK.B':['버크셔해서웨이','워런 버핏의 지주회사'],
+  XOM:['엑슨모빌','미국 최대 석유회사 — 유가 따라 움직임'],
+  CVX:['셰브런','대형 석유회사'],
+  BA:['보잉','항공기 제조 — 품질 이슈로 부침'],
+  CAT:['캐터필러','건설장비 — 글로벌 경기 바로미터'],
+  F:['포드','미국 전통 자동차'],
+  GM:['제너럴모터스','미국 전통 자동차'],
+  RIVN:['리비안','전기 픽업트럭 스타트업 — 아마존 투자'],
+  LCID:['루시드','고급 전기차 스타트업 — 사우디 국부펀드 대주주'],
+  IONQ:['아이온큐','양자컴퓨터 — 김정상 교수 공동창업, 테마성 급등락'],
+  RGTI:['리게티','양자컴퓨터 테마주'],
+  JOBY:['조비','전기 수직이착륙기(에어택시)'],
+  SPY:['SPY (ETF)','S&P 500 지수를 그대로 담은 대표 ETF'],
+  QQQ:['QQQ (ETF)','나스닥 100 지수 ETF — 기술주 몰빵'],
+  VOO:['VOO (ETF)','S&P 500 ETF — SPY보다 수수료 저렴, 장기투자용'],
+  SCHD:['SCHD (ETF)','배당성장 ETF — 한국인 장기투자 인기 1위급'],
+  TQQQ:['TQQQ (ETF)','나스닥100 3배 레버리지 — 고위험, 장기보유 비추'],
+  SOXL:['SOXL (ETF)','반도체 3배 레버리지 — 고위험'],
+  O:['리얼티인컴','매달 배당 주는 리츠(부동산)'],
+};
+const koName=sym=>TICKER_KO[sym]?TICKER_KO[sym][0]:null;
+function renderDict(){
+  const q=(document.getElementById('dictSearch').value||'').trim().toLowerCase();
+  const out=document.getElementById('dictOut');
+  const items=Object.entries(TICKER_KO).filter(([sym,[name,desc]])=>
+    !q||sym.toLowerCase().includes(q)||name.toLowerCase().includes(q)||desc.toLowerCase().includes(q));
+  out.innerHTML=items.length?items.map(([sym,[name,desc]])=>
+    `<div style="padding:6px 0;border-bottom:1px solid var(--line)">
+      <b style="color:var(--ink)">${sym}</b> <b style="color:var(--blue)">${name}</b>
+      <span style="display:block;font-size:11.5px">${desc}</span></div>`).join('')
+    :'<div class="muted">검색 결과 없음 — 사전에 없는 티커는 "이 종목 왜 떠?"로 뉴스를 확인해보세요</div>';
+}
 
 /* ---------- 상태 (v2: 멀티 프로필) ---------- */
 const LS='invest-workbench-v2';
@@ -345,7 +455,7 @@ function renderProfileBar(){
     `<button class="pill ghost" onclick="renameProfile()">✏️ 이름 변경</button>`+
     (S.profiles.length>1?`<button class="pill ghost" style="color:var(--up)" onclick="deleteProfile()">🗑 삭제</button>`:'');
 }
-function rerenderAll(){renderProfileBar();renderAcct();renderJournal();renderLeaderboard();refreshPositions();}
+function rerenderAll(){renderProfileBar();renderAcct();renderJournal();renderLeaderboard();updateQuizScore();refreshPositions();}
 function switchProfile(i){S.active=i;save();rerenderAll();}
 function addProfile(){
   const name=(prompt('새 프로필 이름 (예: 경배, 동생, 엄마):')||'').trim();
@@ -392,8 +502,10 @@ async function fetchQuote(){
     const q=await fh('/quote?symbol='+sym);
     if(!q.c)throw new Error('시세 없음 — 티커 확인');
     lastQuote={sym,price:q.c};
+    const ko=TICKER_KO[sym];
     el.innerHTML=`<b>${sym} $${fmt(q.c)}</b>
       <span class="${cls(q.d)}" style="margin-left:8px;font-weight:600">${sign(q.d)} (${sign(q.dp)}%)</span>
+      ${ko?`<div style="font-size:12.5px;margin-top:2px"><b style="color:var(--blue)">${ko[0]}</b> <span class="muted">— ${ko[1]}</span></div>`:''}
       <div class="muted">시가 $${fmt(q.o)} · 고가 $${fmt(q.h)} · 저가 $${fmt(q.l)} · 전일종가 $${fmt(q.pc)}</div>`;
   }catch(e){el.innerHTML='<span class="up">'+e.message+'</span>';lastQuote=null;}
 }
@@ -580,7 +692,7 @@ async function loadNews(){
       fh(`/company-news?symbol=${sym}&from=${iso(from)}&to=${iso(to)}`),
       fh('/quote?symbol='+sym).catch(()=>null)
     ]);
-    const head=q&&q.c?`<div style="margin-bottom:8px"><b>${sym} $${fmt(q.c)}</b>
+    const head=q&&q.c?`<div style="margin-bottom:8px"><b>${sym}${koName(sym)?' · '+koName(sym):''} $${fmt(q.c)}</b>
       <span class="${cls(q.dp)}" style="font-weight:600;margin-left:6px">${sign(q.dp)}%</span></div>`:'';
     const rows=(news||[]).slice(0,8);
     if(!rows.length){out.innerHTML=head+'최근 7일 뉴스 없음 — 뉴스 없는 급등은 수급 게임(유증·역병합·스퀴즈)일 가능성이 높아요. 아래 가이드 ⑥·⑦ 참고.';return;}
@@ -592,6 +704,60 @@ async function loadNews(){
   }catch(e){out.innerHTML='<span class="up">'+e.message+'</span>';}
 }
 
+/* ---------- 투자 개념 퀴즈 ---------- */
+const QUIZ=[
+{q:'CPI(소비자물가)가 예상보다 높게 나왔다. 기술주는 보통 어떻게 반응할까?',c:['상승 — 물가가 오르면 기업 매출도 오르니까','하락 — 금리 인하 기대가 멀어지니까','무반응 — 물가랑 주가는 상관없다'],a:1,exp:'물가가 뜨거우면 연준이 금리를 오래 높게 유지 → 미래 이익을 할인하는 성장주(기술주)에 특히 부담이에요. 최근 몇 년 최대 변동일이 대부분 CPI 발표일이었죠.'},
+{q:'"좋은 경제 뉴스가 주가에는 나쁜 뉴스"가 되는 이유는?',c:['기자들이 과장해서','경기가 좋으면 금리 인하 기대가 후퇴해서','좋은 뉴스는 이미 주가에 반영돼 있어서'],a:1,exp:'고용·소비가 너무 뜨거우면 "연준이 금리를 안 내려도 되겠네"로 읽혀요. 금리 국면에서는 지표 호조 = 주가 하락이 자주 나옵니다.'},
+{q:'미국 주식의 상·하한가 제도는?',c:['한국처럼 ±30%','±10%','상·하한가가 없다'],a:2,exp:'상·하한가는 한국 제도예요. 미국은 하루 +70%, -50%도 가능합니다. 대신 급변동 시 거래를 잠깐 멈추는 서킷브레이커(LULD)만 있어요.'},
+{q:'$100에 10주 샀는데 주가가 $50로 떨어져서 10주 더 샀다. 내 평단은?',c:['$50','$75','$100'],a:1,exp:'(100×10 + 50×10) ÷ 20주 = $75. 이게 "물타기"인데, 평단은 내려가지만 투입금이 2배가 된다는 걸 잊으면 안 돼요. 근거 없는 물타기는 손실 확대의 지름길.'},
+{q:'뉴스가 하나도 없는데 페니스톡(초저가주)이 하루 +70% 급등했다. 가장 흔한 배경은?',c:['숨겨진 호재가 곧 발표된다','유상증자·역병합·숏스퀴즈 같은 수급 게임','기관이 몰래 매집 중'],a:1,exp:'뉴스 없는 급등은 대부분 기업가치와 무관한 수급 게임이에요. "이유를 모르면 내 돈이 이유" — 학습 대상으로도 비추천.'},
+{q:'SEC Form 4는 뭘 공시하는 서류일까?',c:['기업 분기 실적','내부자(임원·대주주)의 자사주 매매','공매도 잔고'],a:1,exp:'Form 4는 내부자 매매를 거래 후 2영업일 내에 공시해요. "CEO가 자기 회사 주식을 사고 있나?"를 보는 창구 — 이 사이트의 내부자 동향 카드가 이걸 보여줍니다.'},
+{q:'손절선은 언제 정하는 게 원칙일까?',c:['떨어지기 시작하면 그때','진입하기 전에 미리','전문가 방송을 보고'],a:1,exp:'포지션에 들어가면 심리(희망·공포)가 판단을 흐려요. 그래서 진입 전에 "여기까지 빠지면 나간다"를 정하는 것. 이 사이트 주문창의 근거 칸에 손절선을 같이 적는 습관을 들여보세요.'},
+{q:'VIX 지수가 급등했다. 시장 상황은 보통?',c:['강세장 — 투자 열기가 뜨겁다','공포 확대 — 큰 변동성이 온다','거래량이 말랐다'],a:1,exp:'VIX는 "공포지수" — S&P 500 옵션으로 계산한 예상 변동성이에요. 급등하면 시장이 급락 중이거나 큰 이벤트를 앞두고 있을 가능성이 높아요.'},
+{q:'승률이 40%밖에 안 되는 트레이더도 돈을 벌 수 있을까?',c:['불가능 — 승률이 절반은 넘어야 한다','가능 — 이길 때 크게, 질 때 작게 (손익비)','수수료 때문에 무조건 손해'],a:1,exp:'10번 중 4번 이겨도, 이길 때 +30% / 질 때 -10%면 계좌는 늘어요. 승률보다 손익비(이익:손실 비율)가 중요 — 매매일지의 승률과 실현손익을 같이 보세요.'},
+{q:'NFP(고용지표) 발표 5분 전이다. 초보의 기본기는?',c:['발표 직전에 미리 베팅','발표 후 30분~1시간은 진입 회피','아무 때나 사도 된다'],a:1,exp:'발표 직후 5~30분은 변동성이 극단으로 치솟아 방향이 수시로 뒤집혀요. 프로들도 이 시간대는 관망이 많습니다.'},
+{q:'데모 계좌 수익률이 실전과 가장 다른 이유는?',c:['데모는 시세가 가짜라서','실제 돈이 아니라 공포·욕심이 빠져서','데모는 수수료가 없어서'],a:1,exp:'시세는 진짜지만 심리가 달라요. -10%일 때 데모는 담담하게 손절하지만 실전은 손이 안 나가죠. 데모의 목적은 수익이 아니라 습관 훈련입니다.'},
+{q:'금리가 오르면 성장주가 가치주보다 더 아픈 이유는?',c:['성장주는 빚이 많아서','이익이 먼 미래에 있어 할인율 타격이 커서','기관이 성장주를 싫어해서'],a:1,exp:'주가는 미래 이익을 현재가치로 할인한 것. 금리(할인율)가 오르면 이익이 먼 미래에 있는 성장주일수록 현재가치가 크게 깎여요.'},
+{q:'FOMC "점도표(dot plot)"는 뭘 보여줄까?',c:['연준 위원들의 향후 금리 전망','주요 종목 목표주가','인플레이션 실측치'],a:0,exp:'위원 각자가 예상하는 향후 금리를 점으로 찍은 것. 3·6·9·12월 회의 때 나오고, 점들이 위/아래로 움직이면 시장이 크게 반응해요.'},
+{q:'ETF란?',c:['개별 회사 주식','여러 종목을 담은 바구니를 주식처럼 사고파는 상품','은행 예금의 일종'],a:1,exp:'S&P 500 전체를 담은 SPY/VOO처럼, 한 주만 사도 자동 분산이 되는 상품이에요. 개별 종목 고르기 어려울 때의 기본 선택지. 단 TQQQ·SOXL 같은 레버리지 ETF는 전혀 다른 고위험 상품!'},
+{q:'13F 공시로 알 수 있는 것은?',c:['기관의 보유 지분 (분기마다)','내부자의 실시간 매매','기업의 파산 신청'],a:0,exp:'운용자산 $1억 이상 기관이 분기마다 보유 종목을 공개해요. "버핏이 뭘 샀나"가 여기서 나옵니다. 단 최대 45일 지연 — 이미 판 뒤일 수도 있어요.'},
+{q:'분산투자의 핵심 목적은?',c:['수익률 극대화','한 종목의 악재가 계좌 전체를 무너뜨리지 않게','매매 횟수 늘리기'],a:1,exp:'아무리 확신해도 개별 기업엔 예측 불가능한 악재(소송·회계이슈·CEO 리스크)가 있어요. 분산은 수익을 키우는 게 아니라 치명상을 막는 장치입니다.'},
+];
+const qz=()=>P().quiz||(P().quiz={right:0,done:0});
+let quizIdx=-1;
+function updateQuizScore(){
+  const s=qz();
+  document.getElementById('quizScore').innerHTML=
+    `<b>${esc(P().name)}</b>님의 기록: ${s.done}문제 중 <b class="${s.done&&s.right/s.done>=0.7?'up':''}">${s.right}개</b> 정답${s.done?` (${Math.round(s.right/s.done*100)}%)`:''}`;
+}
+function nextQuiz(){
+  let i;do{i=Math.floor(Math.random()*QUIZ.length);}while(QUIZ.length>1&&i===quizIdx);
+  quizIdx=i;
+  const item=QUIZ[i];
+  document.getElementById('quizQ').textContent='Q. '+item.q;
+  document.getElementById('quizExp').style.display='none';
+  document.getElementById('quizNext').style.display='none';
+  document.getElementById('quizChoices').innerHTML=item.c.map((t,ci)=>
+    `<button class="wide" style="text-align:left" onclick="answerQuiz(${ci})">${'①②③'[ci]} ${esc(t)}</button>`).join('');
+  updateQuizScore();
+}
+function answerQuiz(ci){
+  const item=QUIZ[quizIdx], s=qz();
+  s.done++;if(ci===item.a)s.right++;save();
+  [...document.getElementById('quizChoices').children].forEach((b,bi)=>{
+    b.disabled=true;b.style.cursor='default';
+    if(bi===item.a)b.style.borderColor='var(--warn)';
+    if(bi===ci)b.style.background=ci===item.a?'#1d2b1d':'#2b1a1d';
+  });
+  const exp=document.getElementById('quizExp');
+  exp.style.display='block';
+  exp.innerHTML=(ci===item.a?'⭕ <b>정답!</b> ':'❌ <b>아쉽다!</b> 정답은 '+'①②③'[item.a]+'. ')+esc(item.exp);
+  document.getElementById('quizNext').style.display='inline-block';
+  updateQuizScore();
+}
+
+renderDict();
+nextQuiz();
 rerenderAll();
 </script>
 </body>
