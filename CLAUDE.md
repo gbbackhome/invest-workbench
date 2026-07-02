@@ -40,7 +40,9 @@
 | 시세 조회·"이 종목 왜 떠?" 뉴스(`loadNews()`)·내부자 매매(SEC Form 4) | Finnhub REST (`fh()` 헬퍼, 무료 티어 분당 60회) | ✅ |
 | 계좌·포지션·매매일지·복기·CSV 내보내기 | 순수 JS + localStorage | ❌ |
 
-- 상태 객체 `S = {cash, positions, trades, key}` — 스키마 변경 시 기존 localStorage 데이터 마이그레이션 고려.
+- 상태 객체(v2, 멀티 프로필): `S = {profiles:[{name,cash,positions,trades}], active, key}` — localStorage 키 `invest-workbench-v2`, 구버전 v1은 로드 시 자동 이전. `P()`가 활성 프로필. 스키마 변경 시 기존 데이터 마이그레이션 필수.
+- **데모 트레이딩이 이 프로젝트의 최우선 영역** (경배님 지시) — 멀티 프로필로 여러 사람이 겨루는 구조, 리더보드 포함. 개선 우선순위를 여기에 둘 것.
+- ⚠️ 테이블 데이터 행을 지울 땐 반드시 `clearRows()` 사용 — `insertAdjacentHTML`로 넣은 `<tr>`은 별도 tbody에 들어가서 `tr:not(:first-child)` 선택자로는 안 지워짐 (행 중복 버그의 원인이었음).
 - v3 학습 콘텐츠: 급등/급락 이유 8가지 가이드, 경제지표 사이드노트 8개(NFP·평균임금·CPI·FOMC·실업수당·PMI·GDP·소비자심리), 핵심 원리 = "예상치 대비 서프라이즈" + "좋은 뉴스가 나쁜 뉴스"
 - 한국어 로케일: TradingView `locale:'kr'`, 타임존 `Asia/Seoul`.
 
