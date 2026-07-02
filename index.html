@@ -71,6 +71,21 @@
   .field{margin-bottom:11px} .field label{display:block;font-size:12px;color:var(--sub);margin-bottom:5px}
   .field input,.field textarea,.field select{width:100%}
   .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+  /* 학습 사이드노트 (아코디언) */
+  details.edu{border:1px solid var(--line);border-radius:12px;background:var(--card2);margin:6px 0}
+  details.edu>summary{padding:10px 13px;cursor:pointer;font-size:12.5px;font-weight:600;list-style:none;display:flex;align-items:center;gap:7px}
+  details.edu>summary::after{content:'+';margin-left:auto;color:var(--sub)}
+  details.edu[open]>summary::after{content:'–'}
+  details.edu .body{padding:0 13px 12px;font-size:12px;color:var(--sub);line-height:1.65}
+  details.edu .body b{color:var(--ink)}
+  .imp{font-size:9px;padding:1px 7px;border-radius:20px;font-weight:700}
+  .imp.hi{background:#3a1418;color:var(--up)} .imp.mid{background:#332a10;color:var(--warn)}
+  .newsItem{border-bottom:1px solid var(--line);padding:9px 2px}
+  .newsItem:last-child{border-bottom:0}
+  .newsItem a{color:var(--ink);text-decoration:none;font-size:12.5px;font-weight:600}
+  .newsItem a:hover{color:var(--blue)}
+  .newsItem .meta{font-size:11px;color:var(--sub);margin-top:2px}
 </style>
 </head>
 <body>
@@ -115,13 +130,72 @@
       <div class="card">
         <h2>Trending Stocks <span class="sub">급등·급락·거래량</span></h2>
         <div class="tv" id="movers" style="height:460px"></div>
-        <button class="wide" style="margin-top:10px" onclick="document.getElementById('heatmap').scrollIntoView({behavior:'smooth'})">Explore more trending</button>
+
+        <h2 style="margin-top:14px;font-size:13px">🔍 이 종목 왜 떠? <span class="sub">최근 7일 뉴스</span></h2>
+        <div class="toolbar" style="margin-bottom:8px">
+          <input id="newsSym" placeholder="위 리스트의 티커 입력 (예: NVDA)" style="flex:1;min-width:0">
+          <button class="primary" onclick="loadNews()">뉴스 조회</button>
+        </div>
+        <div id="newsOut" class="muted" style="font-size:12px">급등/급락 종목의 티커를 입력하면 원인이 될 만한 최근 뉴스를 가져와요 (Finnhub 키 필요)</div>
+
+        <details class="edu" style="margin-top:10px">
+          <summary>📚 종목이 급등/급락하는 전형적인 이유들</summary>
+          <div class="body">
+            <b>① 실적 발표</b> — 어닝 서프라이즈/쇼크와 다음 분기 가이던스. 실적 좋아도 가이던스 나쁘면 급락.<br>
+            <b>② 애널리스트 목표가·등급 변경</b> — 대형 IB의 상향/하향.<br>
+            <b>③ M&A·인수 루머</b> — 피인수 기업은 급등, 인수 기업은 하락하는 경우가 많음.<br>
+            <b>④ FDA 승인/임상 결과</b> — 바이오 급등락의 대부분.<br>
+            <b>⑤ 대형 계약·신제품</b> — 특히 정부/빅테크 납품 계약.<br>
+            <b>⑥ 유상증자·역병합·상폐 위기</b> — 초저가주(페니스톡)가 하루 +70% 같은 움직임을 보이는 흔한 배경. 거래량은 많지만 <b>기업가치와 무관한 수급 게임</b>인 경우가 많아 학습 대상으론 비추천.<br>
+            <b>⑦ 공매도 스퀴즈·밈주식</b> — 숏 비율 높은 종목에 개미 매수 몰릴 때.<br>
+            <b>⑧ 지수 편입/제외</b> — S&P 500 편입 발표 시 패시브 자금 유입.<br><br>
+            💡 뉴스를 찾을 수 없는 급등은 대부분 ⑥·⑦ — "이유를 모르면 내 돈이 이유"라는 말을 기억하세요.
+          </div>
+        </details>
       </div>
 
       <!-- Economic Calendar (시안: 타임라인 + Impact) -->
       <div class="card">
         <h2>Economic Calendar <span class="sub">주요 일정</span></h2>
-        <div class="tv" id="calendar" style="height:520px"></div>
+        <div class="tv" id="calendar" style="height:420px"></div>
+
+        <h2 style="margin-top:14px;font-size:13px">📖 이 지표들, 주식이랑 무슨 상관? <span class="sub">클릭해서 펼치기</span></h2>
+        <div class="muted" style="font-size:11.5px;margin-bottom:8px">
+          핵심 원리: 시장은 수치 자체가 아니라 <b style="color:var(--ink)">예상치 대비 서프라이즈</b>에 반응해요.
+          그리고 요즘 같은 금리 국면에선 "경기가 너무 좋다 = 금리 인하가 멀어진다"로 읽혀서
+          <b style="color:var(--ink)">좋은 뉴스가 주가엔 나쁜 뉴스</b>가 되기도 합니다.
+        </div>
+
+        <details class="edu"><summary>🧑‍💼 비농업고용 NFP <span class="imp hi">HIGH</span></summary>
+          <div class="body">매월 첫 금요일 발표되는 미국 신규 고용자 수. <b>연준 금리 결정의 핵심 입력값</b>이라 발표 순간 시장 전체가 출렁여요.<br>
+          · 예상 <b>상회</b>(고용 뜨거움) → 금리 인하 기대 후퇴 → 성장주·기술주 압박<br>
+          · 예상 <b>하회</b>(고용 냉각) → 인하 기대 ↑ but 너무 나쁘면 "침체 공포"로 다 같이 하락<br>
+          💡 발표 직후 5~30분은 변동성 극단 — 초보는 이 시간대 진입을 피하는 게 기본기.</div></details>
+
+        <details class="edu"><summary>💵 평균임금 상승률 <span class="imp hi">HIGH</span></summary>
+          <div class="body">NFP와 동시 발표. 임금이 빨리 오르면 기업 비용↑ + 소비 여력↑ = <b>인플레이션 압력</b>으로 해석돼요. 고용 수치가 무난해도 임금이 튀면 시장이 하락하는 이유.</div></details>
+
+        <details class="edu"><summary>🛒 CPI 소비자물가지수 <span class="imp hi">HIGH</span></summary>
+          <div class="body">인플레이션 대표 지표 (매월 중순). 연준의 목표는 2%.<br>
+          · 예상 상회 → "금리 더 오래 높게" → 주식·채권 동반 약세, 특히 기술주<br>
+          · 예상 하회 → 랠리 연료. 최근 몇 년 시장 최대 변동일이 대부분 CPI 발표일이었어요.<br>
+          변형: 연준이 실제로 더 보는 건 <b>PCE 물가</b> (월말 발표).</div></details>
+
+        <details class="edu"><summary>🏦 FOMC 금리 결정 <span class="imp hi">HIGH</span></summary>
+          <div class="body">연 8회. 금리 자체보다 <b>파월 의장 기자회견의 뉘앙스</b>에 시장이 반응해요.<br>
+          금리↑ = 미래 이익의 할인율↑ → 이익이 먼 미래에 있는 <b>성장주일수록 밸류에이션 타격</b>. 반대로 금리 인하 기대는 성장주 랠리 연료. "점도표(dot plot)"가 나오는 회의(3·6·9·12월)가 특히 큼.</div></details>
+
+        <details class="edu"><summary>📉 신규 실업수당 청구건수 <span class="imp mid">MED</span></summary>
+          <div class="body">매주 목요일 — <b>고용시장의 주간 체온계</b>. 월간 지표(NFP) 사이의 공백을 메워줘요. 추세가 꺾이는지(4주 이동평균)를 보는 게 포인트.</div></details>
+
+        <details class="edu"><summary>🏭 ISM 제조업/서비스 PMI <span class="imp mid">MED</span></summary>
+          <div class="body">구매관리자 설문 — <b>50 이상 = 확장, 미만 = 수축</b>. 실물 경기의 선행지표라 침체 논쟁 때 주목도가 급상승해요. 제조업(월초)·서비스업(월초 이틀 뒤) 두 번 발표.</div></details>
+
+        <details class="edu"><summary>🧾 GDP 성장률 <span class="imp mid">MED</span></summary>
+          <div class="body">분기별 경제 성적표. 속보치→잠정치→확정치 3번 발표되고 속보치의 임팩트가 가장 커요. 2분기 연속 마이너스면 기술적 침체 — 침체 공포는 경기민감주(금융·산업·소비재)부터 때립니다.</div></details>
+
+        <details class="edu"><summary>🙂 소비자심리지수 <span class="imp mid">MED</span></summary>
+          <div class="body">미시간대 조사. 미국 GDP의 약 70%가 소비라서 <b>심리가 꺾이면 소비주·리테일부터 경고등</b>. 함께 발표되는 <b>기대 인플레이션</b> 수치가 연준 결정에 영향을 줘서 의외로 시장을 움직이는 날이 있어요.</div></details>
       </div>
     </div>
   </div>
@@ -400,6 +474,31 @@ async function loadInsiders(){
         <td class="${buy?'up':'down'}">${CODE[d.transactionCode]||d.transactionCode||''}</td>
         <td class="num ${buy?'up':'down'}">${(d.change||0).toLocaleString()}</td>
         <td class="num">${d.transactionPrice?'$'+fmt(d.transactionPrice):'—'}</td></tr>`;}).join('')+'</table>';
+  }catch(e){out.innerHTML='<span class="up">'+e.message+'</span>';}
+}
+
+/* ---------- 종목 뉴스 (왜 떠?) ---------- */
+async function loadNews(){
+  const sym=document.getElementById('newsSym').value.trim().toUpperCase();
+  const out=document.getElementById('newsOut');
+  if(!sym)return alert('티커를 입력하세요');
+  out.innerHTML='조회 중…';
+  try{
+    const to=new Date(), from=new Date(to-7*864e5);
+    const iso=d=>d.toISOString().slice(0,10);
+    const [news,q]=await Promise.all([
+      fh(`/company-news?symbol=${sym}&from=${iso(from)}&to=${iso(to)}`),
+      fh('/quote?symbol='+sym).catch(()=>null)
+    ]);
+    const head=q&&q.c?`<div style="margin-bottom:8px"><b>${sym} $${fmt(q.c)}</b>
+      <span class="${cls(q.dp)}" style="font-weight:600;margin-left:6px">${sign(q.dp)}%</span></div>`:'';
+    const rows=(news||[]).slice(0,8);
+    if(!rows.length){out.innerHTML=head+'최근 7일 뉴스 없음 — 뉴스 없는 급등은 수급 게임(유증·역병합·스퀴즈)일 가능성이 높아요. 아래 가이드 ⑥·⑦ 참고.';return;}
+    out.innerHTML=head+rows.map(n=>{
+      const d=new Date(n.datetime*1000);
+      return `<div class="newsItem"><a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.headline)}</a>
+        <div class="meta">${d.getMonth()+1}/${d.getDate()} · ${esc(n.source)}</div></div>`;}).join('')+
+      '<div class="muted" style="margin-top:6px;font-size:11px">💡 헤드라인과 등락 방향이 설명되는지 확인해보세요. 설명이 안 되면 수급성 움직임일 확률이 높아요.</div>';
   }catch(e){out.innerHTML='<span class="up">'+e.message+'</span>';}
 }
 
