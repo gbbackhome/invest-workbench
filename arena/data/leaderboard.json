@@ -1,0 +1,84 @@
+{
+ "updated": "2026-07-02",
+ "notional": 1000,
+ "personas": {
+  "quant": {
+   "name": "퀀텀투자가",
+   "emoji": "🤖",
+   "color": "#7fb0ff",
+   "style": "데이터·모멘텀 기반 단중기 트레이딩",
+   "points": 0,
+   "graded": 0,
+   "hits": 0,
+   "hit_rate": null,
+   "virtual_pnl": 0,
+   "open": 0,
+   "total": 0
+  },
+  "wallstreet": {
+   "name": "월스트리트 투자가",
+   "emoji": "🏦",
+   "color": "#3182f6",
+   "style": "실적·밸류에이션 중심 기관 스타일",
+   "points": 0,
+   "graded": 0,
+   "hits": 0,
+   "hit_rate": null,
+   "virtual_pnl": 0,
+   "open": 0,
+   "total": 0
+  },
+  "safe": {
+   "name": "안전자산가",
+   "emoji": "🛡️",
+   "color": "#8ad0a0",
+   "style": "방어·배당·분산 — 잃지 않는 투자",
+   "points": 0,
+   "graded": 0,
+   "hits": 0,
+   "hit_rate": null,
+   "virtual_pnl": 0,
+   "open": 0,
+   "total": 0
+  },
+  "buffett": {
+   "name": "워렌버핏",
+   "emoji": "👴",
+   "color": "#ffd66b",
+   "style": "가치투자 — 해자 있는 기업을 장기 보유",
+   "points": 0,
+   "graded": 0,
+   "hits": 0,
+   "hit_rate": null,
+   "virtual_pnl": 0,
+   "open": 0,
+   "total": 0
+  },
+  "krant": {
+   "name": "한국개미",
+   "emoji": "🐜",
+   "color": "#f04452",
+   "style": "서학개미 — 테마·레버리지 불사르는 고위험 단타",
+   "points": 0,
+   "graded": 0,
+   "hits": 0,
+   "hit_rate": null,
+   "virtual_pnl": 0,
+   "open": 0,
+   "total": 0
+  },
+  "usant": {
+   "name": "미국개미",
+   "emoji": "🦅",
+   "color": "#c78fff",
+   "style": "월스트리트베츠 감성 — 역발상·밈주식",
+   "points": 0,
+   "graded": 0,
+   "hits": 0,
+   "hit_rate": null,
+   "virtual_pnl": 0,
+   "open": 0,
+   "total": 0
+  }
+ }
+}

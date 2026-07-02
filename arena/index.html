@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏇 AI 아레나 — Invest Workbench</title>
+<style>
+  :root{
+    --bg:#000;--card:#0f1013;--card2:#17181d;--line:rgba(255,255,255,.07);
+    --ink:#f2f4f8;--sub:#7d8494;--blue:#3182f6;
+    --up:#f04452;--down:#3485fa;--warn:#ffd66b;--r:18px;
+  }
+  *{box-sizing:border-box;font-family:'Pretendard',system-ui,-apple-system,'Apple SD Gothic Neo',sans-serif}
+  body{margin:0;background:var(--bg);color:var(--ink);line-height:1.5}
+  .wrap{max-width:1100px;margin:0 auto;padding:14px 16px 40px}
+  .brand{display:flex;align-items:center;gap:10px;padding:16px 2px 6px;flex-wrap:wrap}
+  .brand h1{margin:0;font-size:17px;font-weight:700}
+  .brand .demo{font-size:10px;padding:3px 9px;border-radius:20px;background:#1c1d24;color:var(--sub)}
+  .brand a{color:var(--sub);font-size:12px;text-decoration:none;margin-left:auto}
+  .brand a:hover{color:var(--blue)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-bottom:14px}
+  .card h2{font-size:15px;font-weight:700;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+  .card h2 .sub{font-size:10px;color:var(--sub);font-weight:400;margin-left:auto}
+  .muted{color:var(--sub);font-size:12px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{border-bottom:1px solid var(--line);padding:9px 8px;text-align:left}
+  th{color:var(--sub);font-weight:600;font-size:11px}
+  tr:last-child td{border-bottom:0}
+  .num{text-align:right;font-variant-numeric:tabular-nums}
+  .up{color:var(--up)} .down{color:var(--down)}
+  .note{border-left:3px solid var(--blue);background:var(--card2);padding:11px 14px;border-radius:0 12px 12px 0;font-size:12px;color:var(--sub);margin-top:12px}
+  .pill{display:inline-block;padding:5px 13px;border-radius:20px;background:var(--card2);border:1px solid var(--line);font-size:12px;cursor:pointer;color:var(--sub);font-weight:600;margin:0 6px 6px 0}
+  .pill.on{background:var(--blue);border-color:var(--blue);color:#fff}
+  .tag{display:inline-block;font-size:10px;padding:2px 8px;border-radius:20px;background:#1c2333;color:#7fb0ff}
+  /* 경마 트랙 */
+  .lane{position:relative;height:44px;background:var(--card2);border-radius:12px;margin-bottom:8px;overflow:hidden}
+  .lane .fill{position:absolute;left:0;top:0;bottom:0;border-radius:12px;opacity:.16;transition:width 1s ease}
+  .lane .horse{position:absolute;top:50%;transform:translateY(-50%);font-size:22px;transition:left 1s ease}
+  .lane .label{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:700;z-index:2}
+  .lane .score{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--sub);font-variant-numeric:tabular-nums}
+  .predItem{border-bottom:1px solid var(--line);padding:11px 2px;font-size:12.5px}
+  .predItem:last-child{border-bottom:0}
+  .predItem .meta{font-size:11px;color:var(--sub);margin-top:3px}
+  .predItem .why{margin-top:5px;color:var(--sub);line-height:1.6}
+  .st{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:700}
+  .st.open{background:#1c2333;color:#7fb0ff}
+  .st.correct{background:#14301b;color:#8ad0a0}
+  .st.wrong{background:#3a1418;color:var(--up)}
+  .st.void{background:#222;color:var(--sub)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <h1>🏇 AI 아레나</h1><span class="demo">6 AI 페르소나 · 실시세 자동 채점</span>
+    <a href="../">← 워크벤치로</a>
+  </div>
+
+  <div class="card">
+    <h2>레이스 트랙 <span class="sub" id="updated"></span></h2>
+    <div id="track"></div>
+    <div class="muted" style="margin-top:8px">점수 = 적중 시 +확신도(1~5), 오답 시 −확신도. 말의 위치는 선두 대비 상대 점수.</div>
+  </div>
+
+  <div class="card">
+    <h2>🏆 리더보드 <span class="sub">예측 1건당 가상 $1,000 베팅 기준</span></h2>
+    <table id="board"><tr><th>순위</th><th>페르소나</th><th>스타일</th><th class="num">점수</th><th class="num">적중률</th><th class="num">가상손익</th><th class="num">채점/진행</th></tr></table>
+  </div>
+
+  <div class="card">
+    <h2>📋 예측 기록 <span class="sub">근거까지 전부 공개 — 여기서 배우세요</span></h2>
+    <div id="filterBar"></div>
+    <div id="feed"></div>
+  </div>
+
+  <div class="note" id="setupNote" style="display:none">
+    🏁 아직 첫 레이스 전이에요. GitHub 저장소 Settings → Secrets and variables → Actions에
+    <b>ANTHROPIC_API_KEY</b>를 등록하고, Actions 탭에서 "AI Arena Daily Run"을 수동 실행(Run workflow)하면
+    첫 예측이 시작됩니다. 이후엔 매 평일 미국 장 마감 후 자동 실행돼요.
+  </div>
+</div>
+
+<script>
+const esc=s=>(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let PREDS=[],BOARD=null,FILTER='all';
+
+async function boot(){
+  try{
+    const t=Date.now();
+    [PREDS,BOARD]=await Promise.all([
+      fetch('data/predictions.json?t='+t).then(r=>r.json()),
+      fetch('data/leaderboard.json?t='+t).then(r=>r.json()).catch(()=>null)
+    ]);
+  }catch(e){}
+  if(!BOARD||!Object.keys(BOARD.personas||{}).length||!PREDS.length){
+    document.getElementById('setupNote').style.display='block';
+  }
+  if(BOARD)render();
+}
+
+function render(){
+  const ps=Object.entries(BOARD.personas).sort((a,b)=>b[1].points-a[1].points);
+  document.getElementById('updated').textContent='최근 갱신: '+(BOARD.updated||'—');
+
+  // 트랙
+  const max=Math.max(1,...ps.map(([,p])=>p.points));
+  const min=Math.min(0,...ps.map(([,p])=>p.points));
+  const span=max-min||1;
+  document.getElementById('track').innerHTML=ps.map(([k,p])=>{
+    const pct=8+((p.points-min)/span)*78; // 8%~86% 사이 위치
+    return `<div class="lane">
+      <div class="fill" style="width:${pct+6}%;background:${p.color}"></div>
+      <span class="label" style="color:${p.color}">${p.name}</span>
+      <span class="horse" style="left:${pct}%">${p.emoji}</span>
+      <span class="score">${p.points}점</span>
+    </div>`;
+  }).join('');
+
+  // 리더보드
+  const tb=document.getElementById('board');
+  [...tb.querySelectorAll('tr')].slice(1).forEach(r=>r.remove());
+  ps.forEach(([k,p],i)=>{
+    tb.insertAdjacentHTML('beforeend',`<tr>
+      <td>${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</td>
+      <td><b style="color:${p.color}">${p.emoji} ${p.name}</b></td>
+      <td class="muted">${esc(p.style)}</td>
+      <td class="num"><b>${p.points}</b></td>
+      <td class="num">${p.hit_rate!==null?p.hit_rate+'%':'—'}</td>
+      <td class="num ${p.virtual_pnl>0?'up':p.virtual_pnl<0?'down':''}">${p.virtual_pnl>0?'+':''}$${p.virtual_pnl.toFixed(2)}</td>
+      <td class="num muted">${p.graded}건 / ${p.open}건</td></tr>`);
+  });
+
+  // 필터 + 피드
+  document.getElementById('filterBar').innerHTML=
+    `<span class="pill ${FILTER==='all'?'on':''}" onclick="setFilter('all')">전체</span>`+
+    ps.map(([k,p])=>`<span class="pill ${FILTER===k?'on':''}" onclick="setFilter('${k}')">${p.emoji} ${p.name}</span>`).join('');
+  const items=PREDS.filter(p=>FILTER==='all'||p.persona===FILTER).slice().reverse().slice(0,40);
+  const STATUS={open:'진행 중',correct:'⭕ 적중',wrong:'❌ 오답',void:'무효'};
+  document.getElementById('feed').innerHTML=items.length?items.map(p=>{
+    const m=BOARD.personas[p.persona]||{emoji:'🤔',name:p.persona,color:'#888'};
+    return `<div class="predItem">
+      <b style="color:${m.color}">${m.emoji} ${m.name}</b>
+      · <b>${esc(p.ticker)}</b> <span class="${p.direction==='up'?'up':'down'}">${p.direction==='up'?'상승 ▲':'하락 ▼'}</span>
+      · <span class="st ${p.status}">${STATUS[p.status]}</span>
+      ${p.status==='correct'||p.status==='wrong'?`<span class="num ${p.return_pct>0?'up':'down'}" style="margin-left:6px;font-weight:700">${p.return_pct>0?'+':''}${p.return_pct}%</span>`:''}
+      <div class="meta">${p.start_date} → ${p.end_date} (${p.horizon_days}일) · 진입가 $${p.start_price} · 확신도 ${'★'.repeat(p.confidence)}${'☆'.repeat(5-p.confidence)}</div>
+      <div class="why">💬 ${esc(p.rationale)}</div>
+    </div>`;
+  }).join(''):'<div class="muted" style="padding:12px 2px">아직 예측이 없어요 — 첫 레이스를 기다리는 중 🏁</div>';
+}
+function setFilter(f){FILTER=f;render();}
+boot();
+</script>
+</body>
+</html>

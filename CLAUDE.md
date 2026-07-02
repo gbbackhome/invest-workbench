@@ -47,6 +47,18 @@
 - v3 학습 콘텐츠: 급등/급락 이유 8가지 가이드, 경제지표 사이드노트 8개(NFP·평균임금·CPI·FOMC·실업수당·PMI·GDP·소비자심리), 핵심 원리 = "예상치 대비 서프라이즈" + "좋은 뉴스가 나쁜 뉴스"
 - 한국어 로케일: TradingView `locale:'kr'`, 타임존 `Asia/Seoul`.
 
+## 🏇 AI 아레나 (arena/)
+
+6개 AI 페르소나(퀀텀·월스트리트·안전자산가·워렌버핏·한국개미·미국개미)가 매일 미국 자산의 방향(상승/하락, 1~365일)을 예측하고 실시세로 자동 채점되는 장기 실험. 목표: 수개월치 예측·근거·교훈 데이터를 쌓아 어떤 투자 철학이 실제로 잘 맞는지 검증하고, 최고 성적 AI를 경배님의 투자 파트너로 발전시키는 것.
+
+- 실행: GitHub Actions cron (평일 22:30 UTC = 미국 장 마감 후, `.github/workflows/arena.yml`) → `arena/run_arena.py`
+- 저장: `arena/data/predictions.json`(전체 예측), `arena/data/leaderboard.json`, `arena/memory/*.md`(페르소나별 누적 교훈) — git 커밋이 곧 데이터 축적
+- 시세: 야후 파이낸스 차트 API (키 불필요). Stooq는 봇 차단이라 쓰지 말 것
+- LLM: Actions Secret `ANTHROPIC_API_KEY` 필요, 모델은 repo Variable `ARENA_MODEL`로 변경 가능 (기본 claude-opus-4-8)
+- 관전: `arena/index.html` (경마 트랙 + 리더보드 + 예측 피드)
+- 채점 규칙: 적중 +확신도(1~5), 오답 −확신도, 예측당 가상 $1,000 손익 병행 집계. 규칙 변경 시 과거 데이터와의 일관성 주의
+- 페르소나 추가/수정: `arena/personas.json` (철학은 유지하되 스타일 차별화가 핵심)
+
 ## 다음 단계 백로그 (경배님과 논의된 방향)
 
 - 지정가/손절가 주문 (현재 시장가만)
