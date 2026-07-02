@@ -78,6 +78,12 @@
   .pill.ghost{background:transparent;border-style:dashed}
   .rank1{color:#ffd66b;font-weight:700}
 
+  /* 챗봇 말풍선 */
+  .msg{max-width:85%;padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.65;white-space:pre-wrap;word-break:break-word}
+  .msg.user{align-self:flex-end;background:var(--blue);color:#fff;border-bottom-right-radius:4px}
+  .msg.bot{align-self:flex-start;background:var(--card2);border:1px solid var(--line);border-bottom-left-radius:4px}
+  .msg .cost{display:block;font-size:10px;color:var(--sub);margin-top:6px}
+
   /* 학습 사이드노트 (아코디언) */
   details.edu{border:1px solid var(--line);border-radius:12px;background:var(--card2);margin:6px 0}
   details.edu>summary{padding:10px 13px;cursor:pointer;font-size:12.5px;font-weight:600;list-style:none;display:flex;align-items:center;gap:7px}
@@ -222,6 +228,18 @@
     </div>
   </div>
 
+  <!-- 오늘의 화제 뉴스 -->
+  <div class="card">
+    <h2>📰 오늘의 화제 뉴스 <span class="sub">미국 시장 헤드라인</span></h2>
+    <div class="toolbar" style="margin-bottom:10px">
+      <button class="primary" onclick="loadHotNews()">헤드라인 불러오기</button>
+      <button onclick="summarizeNews()">🏎️ 아스라다 한국어 브리핑</button>
+    </div>
+    <div id="hotNewsOut" class="muted">버튼을 누르면 최신 시장 뉴스를 가져와요 (Finnhub 키 필요).
+      헤드라인은 영어지만 <b>아스라다 브리핑</b> 버튼으로 한국어 요약·해설을 받을 수 있어요 (설정에 Claude 키 필요).</div>
+    <div id="newsAiOut" class="note" style="display:none;white-space:pre-wrap"></div>
+  </div>
+
   <!-- 기관·내부자 동향 -->
   <div class="card">
     <h2>기관·내부자 매매 동향 <span class="sub">SEC Form 4</span></h2>
@@ -270,6 +288,21 @@
     </div>
   </div>
 
+  <!-- 아스라다 챗봇 -->
+  <div class="card">
+    <h2>🏎️ 아스라다에게 물어보기 <span class="sub">내 포트폴리오를 아는 AI 과외선생님</span></h2>
+    <div id="chatLog" style="max-height:420px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;margin-bottom:12px"></div>
+    <div class="toolbar">
+      <input id="chatInput" placeholder="예: 내 포트폴리오 리스크 뭐가 있어? / CPI가 뭐야? / 내 매매일지 평가해줘" style="flex:1;min-width:200px" onkeydown="if(event.key==='Enter')sendChat()">
+      <button class="primary" id="chatSend" onclick="sendChat()">전송</button>
+      <button onclick="clearChat()">대화 지우기</button>
+    </div>
+    <div class="muted" style="font-size:11px;margin-top:8px">
+      ⚠️ 교육용 AI — 투자 권유·종목 추천이 아니에요. 현재 프로필의 데모 포지션·매매일지를 함께 읽고 답합니다.
+      Claude API 키는 아래 설정에서 저장 (사용한 만큼만 Anthropic에 과금, 답변마다 예상 비용 표시).
+    </div>
+  </div>
+
   <!-- 투자 개념 퀴즈 -->
   <div class="card">
     <h2>📚 투자 개념 퀴즈 <span class="sub">하루 몇 문제씩 — 프로필별 점수 기록</span></h2>
@@ -286,6 +319,19 @@
     <div class="field" style="max-width:480px">
       <label>Finnhub API 키 (무료 — 이 브라우저 localStorage에만 저장, 코드/저장소에 노출되지 않음)</label>
       <div style="display:flex;gap:8px"><input id="apiKey" type="password" style="flex:1"><button class="primary" onclick="saveKey()">저장</button></div>
+    </div>
+    <div class="field" style="max-width:480px;margin-top:14px">
+      <label>Claude API 키 (아스라다 챗봇·뉴스 브리핑용 — localStorage에만 저장) ·
+        <a href="https://console.anthropic.com/" target="_blank" rel="noopener" style="color:var(--blue)">console.anthropic.com에서 발급</a></label>
+      <div style="display:flex;gap:8px"><input id="claudeKey" type="password" style="flex:1"><button class="primary" onclick="saveClaudeKey()">저장</button></div>
+    </div>
+    <div class="field" style="max-width:480px">
+      <label>챗봇 모델 — 기본은 가장 똑똑한 Opus, 비용 아끼려면 Haiku</label>
+      <select id="claudeModel" onchange="saveClaudeModel()" style="width:100%">
+        <option value="claude-opus-4-8">Claude Opus 4.8 — 최고 품질 (입력 $5 / 출력 $25 per 100만 토큰)</option>
+        <option value="claude-sonnet-5">Claude Sonnet 5 — 균형 ($3 / $15)</option>
+        <option value="claude-haiku-4-5">Claude Haiku 4.5 — 빠르고 저렴 ($1 / $5)</option>
+      </select>
     </div>
     <div class="note">
       ⚠️ <b>학습 노트</b>: 미국 주식엔 상·하한가(±30%)가 없어요 (한국 제도). 서킷브레이커(LULD)만 존재.
@@ -756,6 +802,141 @@ function answerQuiz(ci){
   updateQuizScore();
 }
 
+/* ---------- Claude API (아스라다 챗봇 · 뉴스 브리핑) ---------- */
+// 키는 localStorage(S.claudeKey)에만 저장 — 절대 커밋 금지 원칙 동일
+const CLAUDE_PRICE={'claude-opus-4-8':[5,25],'claude-sonnet-5':[3,15],'claude-haiku-4-5':[1,5]}; // $ per 1M tokens [입력,출력]
+function saveClaudeKey(){S.claudeKey=document.getElementById('claudeKey').value.trim();save();alert('저장 완료');}
+function saveClaudeModel(){S.claudeModel=document.getElementById('claudeModel').value;save();}
+
+async function claude(messages,system){
+  if(!S.claudeKey)throw new Error('Claude API 키가 없어요 — 설정에서 저장하세요 (console.anthropic.com에서 발급)');
+  const r=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'content-type':'application/json','x-api-key':S.claudeKey,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'}, // 브라우저 직접 호출 허용 헤더
+    body:JSON.stringify({model:S.claudeModel||'claude-opus-4-8',max_tokens:16000,
+      thinking:{type:'adaptive'},system,messages})
+  });
+  if(!r.ok){
+    const e=await r.json().catch(()=>null);
+    if(r.status===401)throw new Error('API 키가 잘못됐거나 만료됐어요 — 설정에서 확인하세요');
+    if(r.status===429)throw new Error('요청이 너무 잦아요 — 잠시 후 다시 시도해주세요');
+    throw new Error('Claude API 오류: '+(e&&e.error&&e.error.message?e.error.message:'HTTP '+r.status));
+  }
+  return r.json();
+}
+const claudeText=resp=>resp.content.filter(b=>b.type==='text').map(b=>b.text).join('\n');
+function claudeCost(u){
+  const p=CLAUDE_PRICE[S.claudeModel||'claude-opus-4-8']||[5,25];
+  return ((u.input_tokens||0)*p[0]+(u.output_tokens||0)*p[1])/1e6;
+}
+
+function portfolioContext(){
+  const A=P();
+  let posVal=0;
+  const pos=Object.entries(A.positions).map(([sym,p])=>{
+    const cur=lastPrices[sym]||p.avgCost;posVal+=cur*p.qty;
+    return `- ${sym}${koName(sym)?' ('+koName(sym)+')':''}: ${p.qty}주, 평단 $${p.avgCost.toFixed(2)}, `+
+      `${lastPrices[sym]?'현재가 $'+lastPrices[sym].toFixed(2):'현재가 미조회(평단 기준)'}, 평가손익 $${((cur-p.avgCost)*p.qty).toFixed(2)}`;});
+  const trades=A.trades.slice(0,15).map(t=>
+    `- ${t.ts.slice(0,10)} ${t.side==='buy'?'매수':'매도'} ${t.sym} ${t.qty}주 @$${t.price}`+
+    `${t.realized!=null?' (실현손익 $'+t.realized.toFixed(2)+')':''} | 근거: ${t.why}${t.review?' | 복기: '+t.review:''}`);
+  return `[현재 프로필: ${A.name}]
+총 자산 $${(A.cash+posVal).toFixed(2)} (현금 $${A.cash.toFixed(2)} + 포지션 평가액 $${posVal.toFixed(2)})
+보유 포지션:
+${pos.length?pos.join('\n'):'(없음)'}
+최근 매매일지 (최신순, 최대 15건):
+${trades.length?trades.join('\n'):'(없음)'}`;
+}
+const CHAT_SYSTEM=()=>`너는 아스라다(ASURADA) — 사용자의 AI 투자 과외선생님이야. 이 사이트는 가상 $10,000 데모 트레이딩으로 미국 주식을 연습하는 교육용 시뮬레이터야.
+
+규칙:
+- 쉬운 한국어로, 금융 용어는 풀어서 설명해 (사용자는 주식 초보)
+- 절대 특정 종목의 매수/매도를 추천하지 마. "사라/팔아라" 대신 판단 기준과 리스크를 가르쳐줘
+- 아래에 사용자의 데모 포트폴리오 데이터가 있어. 포트폴리오 질문에는 이 데이터를 근거로 구체적으로 답해
+- 매매일지의 "근거"가 부실하면 부드럽게 지적해줘 — 근거 있는 매매 습관이 이 훈련의 목표야
+- 데모 수익엔 실전 심리(공포·욕심)가 빠져 있다는 걸 필요할 때 상기시켜줘
+- 간결하게, 필요하면 목록으로
+
+${portfolioContext()}
+
+오늘 날짜: ${new Date().toISOString().slice(0,10)}`;
+
+let chatBusy=false;
+function addBubble(cls,text){
+  const log=document.getElementById('chatLog');
+  const d=document.createElement('div');d.className='msg '+cls;d.textContent=text;
+  log.appendChild(d);log.scrollTop=log.scrollHeight;return d;
+}
+async function sendChat(){
+  if(chatBusy)return;
+  const inp=document.getElementById('chatInput');
+  const q=inp.value.trim();if(!q)return;
+  if(!S.claudeKey){addBubble('bot','Claude API 키가 필요해요 — 아래 설정에서 저장해주세요 (console.anthropic.com에서 무료 발급, 사용량만큼 과금).');return;}
+  inp.value='';addBubble('user',q);
+  S.chat=S.chat||[];
+  S.chat.push({role:'user',content:q});
+  // 비용 관리: 최근 12개 메시지만 유지, 항상 user 턴으로 시작
+  while(S.chat.length>12)S.chat.shift();
+  while(S.chat.length&&S.chat[0].role!=='user')S.chat.shift();
+  chatBusy=true;document.getElementById('chatSend').disabled=true;
+  const wait=addBubble('bot','생각 중… 🏎️');
+  try{
+    const resp=await claude(S.chat,CHAT_SYSTEM());
+    if(resp.stop_reason==='refusal'){
+      wait.textContent='이 질문에는 답할 수 없어요 — 다른 질문을 해주세요.';S.chat.pop();
+    }else{
+      S.chat.push({role:'assistant',content:resp.content}); // thinking 블록 포함 원본 그대로 보존 (멀티턴 규칙)
+      wait.textContent=claudeText(resp);
+      wait.insertAdjacentHTML('beforeend',
+        `<span class="cost">${esc((S.claudeModel||'claude-opus-4-8').replace('claude-',''))} · 이번 답변 약 $${claudeCost(resp.usage).toFixed(4)}</span>`);
+    }
+    save();
+  }catch(e){wait.textContent='⚠️ '+e.message;S.chat.pop();save();}
+  chatBusy=false;document.getElementById('chatSend').disabled=false;
+}
+function clearChat(){if(!confirm('대화를 지울까요?'))return;S.chat=[];save();document.getElementById('chatLog').innerHTML='';}
+function renderChat(){
+  const log=document.getElementById('chatLog');log.innerHTML='';
+  (S.chat||[]).forEach(m=>{
+    if(m.role==='user')addBubble('user',typeof m.content==='string'?m.content:'');
+    else addBubble('bot',(Array.isArray(m.content)?m.content:[]).filter(b=>b.type==='text').map(b=>b.text).join('\n'));
+  });
+}
+
+/* ---------- 오늘의 화제 뉴스 ---------- */
+let hotNewsCache=[];
+async function loadHotNews(){
+  const out=document.getElementById('hotNewsOut');
+  out.innerHTML='불러오는 중…';
+  try{
+    const news=await fh('/news?category=general');
+    hotNewsCache=(news||[]).slice(0,10);
+    if(!hotNewsCache.length){out.innerHTML='뉴스 없음';return;}
+    out.innerHTML=hotNewsCache.map(n=>{
+      const d=new Date(n.datetime*1000);
+      return `<div class="newsItem"><a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.headline)}</a>
+        <div class="meta">${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')} · ${esc(n.source)}</div></div>`;}).join('');
+  }catch(e){out.innerHTML='<span class="up">'+e.message+'</span>';}
+}
+async function summarizeNews(){
+  const out=document.getElementById('newsAiOut');
+  if(!hotNewsCache.length)return alert('먼저 "헤드라인 불러오기"를 눌러주세요');
+  if(!S.claudeKey)return alert('Claude API 키가 필요해요 — 설정에서 저장해주세요');
+  out.style.display='block';out.textContent='아스라다가 읽고 있어요… 🏎️';
+  try{
+    const heads=hotNewsCache.map((n,i)=>`${i+1}. ${n.headline} (${n.source})`).join('\n');
+    const resp=await claude(
+      [{role:'user',content:`다음은 지금 미국 시장의 주요 뉴스 헤드라인이야:\n\n${heads}\n\n주식 초보인 나를 위해 한국어로 브리핑해줘: ① 오늘 시장의 핵심 주제 2~3개 ② 각각이 왜 중요한지 쉬운 설명 ③ 오늘 배울 포인트 1개. 간결하게.`}],
+      '너는 아스라다 — 주식 초보를 위한 한국어 투자 교육 도우미. 쉬운 말로, 특정 종목 매수/매도 추천 없이.');
+    out.textContent=claudeText(resp)+`\n\n(이번 브리핑 약 $${claudeCost(resp.usage).toFixed(4)})`;
+  }catch(e){out.textContent='⚠️ '+e.message;}
+}
+
+document.getElementById('claudeKey').value=S.claudeKey||'';
+document.getElementById('claudeModel').value=S.claudeModel||'claude-opus-4-8';
+renderChat();
 renderDict();
 nextQuiz();
 rerenderAll();

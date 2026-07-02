@@ -10,7 +10,8 @@
 
 ## 절대 규칙
 
-- **API 키는 절대 커밋 금지.** repo가 public이다. Finnhub 키는 사용자가 페이지 "설정"에서 입력 → 브라우저 localStorage에만 저장. 코드·README·커밋 메시지 어디에도 실제 키를 넣지 말 것. 커밋 전 키 패턴 스캔.
+- **API 키는 절대 커밋 금지.** repo가 public이다. Finnhub 키와 Claude API 키 모두 사용자가 페이지 "설정"에서 입력 → 브라우저 localStorage에만 저장. 코드·README·커밋 메시지 어디에도 실제 키를 넣지 말 것. 커밋 전 키 패턴 스캔.
+- 아스라다 챗봇은 브라우저에서 Claude API 직접 호출 (`anthropic-dangerous-direct-browser-access` 헤더, 기본 모델 claude-opus-4-8, adaptive thinking). 챗봇 시스템 프롬프트는 종목 추천 금지·교육 목적 유지 — 이 제약을 풀지 말 것. 멀티턴 히스토리는 응답 content 배열을 원본 그대로 보존해야 함 (thinking 블록 포함).
 - 사용자 데이터(계좌·매매일지·키)는 전부 localStorage(`invest-workbench-v1`)에만 존재. 서버로 보내는 코드 추가 금지.
 - 단일 HTML 유지 — 빌드 도입은 경배님과 상의 후.
 - 교육용 시뮬레이터 정체성 유지 — 투자 권유로 읽힐 문구 금지, 하단 면책 문구 유지.
