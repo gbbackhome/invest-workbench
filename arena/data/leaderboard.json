@@ -1,5 +1,5 @@
 {
- "updated": "2026-07-21",
+ "updated": "2026-07-22",
  "notional": 1000,
  "personas": {
   "quant": {
@@ -72,12 +72,12 @@
    "emoji": "🦅",
    "color": "#c78fff",
    "style": "월스트리트베츠 감성 — 역발상·밈주식",
-   "points": 0,
-   "graded": 0,
+   "points": -3,
+   "graded": 1,
    "hits": 0,
-   "hit_rate": null,
-   "virtual_pnl": 0,
-   "open": 1,
+   "hit_rate": 0.0,
+   "virtual_pnl": -27.3,
+   "open": 0,
    "total": 1
   },
   "asurada": {
