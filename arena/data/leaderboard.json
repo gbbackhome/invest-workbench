@@ -1,5 +1,5 @@
 {
- "updated": "2026-07-31",
+ "updated": "2026-08-03",
  "notional": 1000,
  "personas": {
   "quant": {
@@ -7,12 +7,12 @@
    "emoji": "🤖",
    "color": "#7fb0ff",
    "style": "데이터·모멘텀 기반 단중기 트레이딩",
-   "points": 0,
-   "graded": 0,
-   "hits": 0,
-   "hit_rate": null,
-   "virtual_pnl": 0,
-   "open": 1,
+   "points": 3,
+   "graded": 1,
+   "hits": 1,
+   "hit_rate": 100.0,
+   "virtual_pnl": 1.7,
+   "open": 0,
    "total": 1
   },
   "wallstreet": {
